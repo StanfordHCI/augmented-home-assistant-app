@@ -8,8 +8,7 @@ class AppWindow:
         resource_path = gui.Application.instance.resource_path
         self.settings.new_ibl_name = resource_path + "/" + "default"
 
-        self.window = gui.Application.instance.create_window(
-            "Augmented Home Assistant", width, height)
+        self.window = gui.Application.instance.create_window("Augmented Home Assistant", width, height)
         w = self.window  # to make the code more concise
 
         # 3D widget
@@ -129,8 +128,6 @@ class AppWindow:
     def on_switch(self, is_on):
         # get the states of all toggles
         iot_states = [int(x.is_on) for x in self.iots.get_children() if type(x).__name__ == "ToggleSwitch"]
-        # print("checking states")
-        # print(iot_states)
         # currently D1-3, L1-5, so [0,1,2,3,4,5,6,7]
         # but in reality, it should be D1,L1,L2,D3,L3,D2,L5,L4
         order = [0, 3, 4, 2, 5, 1, 7, 6]

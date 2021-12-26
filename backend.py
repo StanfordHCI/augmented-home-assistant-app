@@ -33,6 +33,14 @@ model.load_state_dict(ckpt)
 model.eval()
 
 
+def remove_ceiling(pcloud):
+    no_ceiling = open3d.geometry.AxisAlignedBoundingBox(
+        np.array(pcloud.get_min_bound()),
+        np.array([pcloud.get_max_bound()[0], pcloud.get_max_bound()[1] - 1e-1, pcloud.get_max_bound()[2]])
+    )
+    return pcloud.crop(no_ceiling)
+
+
 def render_home(sensors):
     sensors = torch.tensor(sensors, dtype=torch.float32)
     pred_vecs = model(sensors).detach().numpy().reshape(-1, config.vector_dims)
@@ -45,4 +53,4 @@ def render_home(sensors):
         pcd_combined += pcd
     assemble_end = time.time()
     print(assemble_end - assemble_start)
-    return pcd_combined
+    return remove_ceiling(pcd_combined)
