@@ -17,6 +17,7 @@ class AppWindow:
         em = w.theme.font_size
         separation_height = int(round(0.5 * em))
         separation_height_small = int(round(0.1 * em))
+        separation_height_big = int(round(1 * em))
         self._settings_panel = gui.Vert(
             0, gui.Margins(0.25 * em, 0.25 * em, 0.25 * em, 0.25 * em))
 
@@ -32,6 +33,7 @@ class AppWindow:
         self.iots.add_child(gui.Label("Lights"))
         for i in range(num_lights):
             self.iots.add_child(self.add_iot("L" + str(i)))
+        self.iots.add_fixed(separation_height)
 
         # Add other control items
         view_ctrls = gui.CollapsableVert("Controls", 0.25 * em, gui.Margins(em, 0, 0, 0))
@@ -58,6 +60,7 @@ class AppWindow:
         h = gui.Horiz(0.25 * em)  # row 1
         h.add_child(self._fly_button)
         h.add_child(self._model_button)
+        view_ctrls.add_fixed(separation_height)
         view_ctrls.add_child(h)
         view_ctrls.add_fixed(separation_height)
         view_ctrls.add_child(self._show_axes)
