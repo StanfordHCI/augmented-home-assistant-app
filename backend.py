@@ -4,12 +4,6 @@ import open3d
 import torch
 import time
 
-dataset_name = "models"
-train_data = torch.load(dataset_name + '/train.pth')
-eval_data = torch.load(dataset_name + '/eval.pth')
-ckpt = torch.load(dataset_name + '/model-new-8-sensors-4000-adam-lr-4-l2-3-not-0-1.pth')
-vector_dims = 2
-
 
 class Model(torch.nn.Module):
     def __init__(self, sensors, chunks, vector_dims):
@@ -23,6 +17,12 @@ class Model(torch.nn.Module):
         output = self.linear(input)
         return output
 
+
+vector_dims = 2
+dataset_name = "models"
+train_data = torch.load(dataset_name + '/train.pth')
+eval_data = torch.load(dataset_name + '/eval.pth')
+ckpt = torch.load(dataset_name + '/model-new-8-sensors-4000-adam-lr-4-l2-3-not-0-1.pth')
 
 vecs = np.array([data[1].tolist() for data in train_data])
 vecs = vecs.reshape(vecs.shape[0], -1, vector_dims).transpose(1, 0, 2)
@@ -53,4 +53,5 @@ def render_home(sensors):
         pcd_combined += pcd
     assemble_end = time.time()
     print(assemble_end - assemble_start)
-    return remove_ceiling(pcd_combined)
+    # return remove_ceiling(pcd_combined)
+    return pcd_combined

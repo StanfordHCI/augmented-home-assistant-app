@@ -1,4 +1,4 @@
-from backend import render_home
+from backend import render_home, remove_ceiling
 from settings import *
 
 
@@ -50,12 +50,19 @@ class AppWindow:
         self._show_axes = gui.Checkbox("Show axes")
         self._show_axes.set_on_checked(self._on_show_axes)
 
+        ## Remove ceiling
+        self._remove_ceiling = gui.Checkbox("Remove ceiling")
+        self._remove_ceiling.set_on_checked(self._on_remove_ceiling)
+
         ## Add the previous two items
         h = gui.Horiz(0.25 * em)  # row 1
         h.add_child(self._fly_button)
         h.add_child(self._model_button)
-        h.add_child(self._show_axes)
         view_ctrls.add_child(h)
+        view_ctrls.add_fixed(separation_height)
+        view_ctrls.add_child(self._show_axes)
+        view_ctrls.add_fixed(separation_height)
+        view_ctrls.add_child(self._remove_ceiling)
         view_ctrls.add_fixed(separation_height)
 
         ## Point size
@@ -111,8 +118,22 @@ class AppWindow:
         self.settings.apply_material = True
         self._apply_settings()
 
-    def my_load(self, geometry, first_time=False):
+    def _on_remove_ceiling(self, is_on):
+        # if is_on:
+        #     new_geo = remove_ceiling(self.geometry)
+        # else:
+        #     new_geo = self.geometry
+        self.my_load(update_geometry=False)
+
+    def my_load(self, geometry=None, first_time=False, update_geometry=True):
+        # TODO: this function needs to be optimized
         self._scene.scene.clear_geometry()
+        if update_geometry:
+            self.geometry = geometry
+        if self.geometry:
+            geometry = self.geometry
+        if self._remove_ceiling.checked:
+            geometry = remove_ceiling(self.geometry)
         self._scene.scene.add_geometry("__model__", geometry,
                                        self.settings.material)
         if first_time:
@@ -134,7 +155,7 @@ class AppWindow:
         iot_states = [iot_states[i] for i in order]
         print(iot_states)
         geo = render_home(iot_states)
-        self.my_load(geo)
+        self.my_load(geometry=geo)
 
 
 def main():
@@ -143,7 +164,7 @@ def main():
     # initial sensors
     sensors = [0, 0, 0, 0, 0, 0, 0, 0]
     geo = render_home(sensors)
-    w.my_load(geo, first_time=True)
+    w.my_load(geometry=geo, first_time=True)
     gui.Application.instance.run()
 
 
