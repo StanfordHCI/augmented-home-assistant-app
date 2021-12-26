@@ -122,21 +122,16 @@ class AppWindow:
         self._apply_settings()
 
     def _on_remove_ceiling(self, is_on):
-        # if is_on:
-        #     new_geo = remove_ceiling(self.geometry)
-        # else:
-        #     new_geo = self.geometry
-        self.my_load(update_geometry=False)
+        self.my_load()
 
-    def my_load(self, geometry=None, first_time=False, update_geometry=True):
-        # TODO: this function needs to be optimized
+    def my_load(self, geometry=None, first_time=False):
         self._scene.scene.clear_geometry()
-        if update_geometry:
-            self.geometry = geometry
-        if self.geometry:
+        if not geometry:
             geometry = self.geometry
+        else:
+            self.geometry = geometry
         if self._remove_ceiling.checked:
-            geometry = remove_ceiling(self.geometry)
+            geometry = remove_ceiling(geometry)
         self._scene.scene.add_geometry("__model__", geometry,
                                        self.settings.material)
         if first_time:
