@@ -15,14 +15,14 @@ class AppWindow:
         self._scene = gui.SceneWidget()
         self._scene.scene = rendering.Open3DScene(w.renderer)
         em = w.theme.font_size
-        separation_height = int(round(0.5 * em))
-        separation_height_small = int(round(0.1 * em))
-        separation_height_big = int(round(1 * em))
+        self.separation_height = int(round(0.5 * em))
+        self.separation_height_small = int(round(0.1 * em))
+        self.separation_height_big = int(round(2 * em))
         self._settings_panel = gui.Vert(
             0, gui.Margins(0.25 * em, 0.25 * em, 0.25 * em, 0.25 * em))
 
         # Add Doors and Lights
-        self.iots = gui.CollapsableVert("IoTs", 0.33 * em, gui.Margins(em, 0, 0, 0))
+        self.iots = gui.CollapsableVert("IoTs", 0.25 * em, gui.Margins(em, 0, 0, 0))
 
         ## horizontal layout
         h_iot = gui.Horiz(2 * em)
@@ -54,22 +54,48 @@ class AppWindow:
         # for i in range(num_lights):
         #     self.iots.add_child(self.add_iot("L" + str(i)))
         #
-        # self.iots.add_fixed(separation_height_small)
+        # self.iots.add_fixed(self.separation_height_small)
         #
         # num_doors = 3
         # self.iots.add_child(gui.Label("Doors"))
         # for i in range(num_doors):
         #     self.iots.add_child(self.add_iot("D" + str(i)))
         #
-        # self.iots.add_fixed(separation_height_small)
+        # self.iots.add_fixed(self.separation_height_small)
         #
         # num_lamps = 3
         # self.iots.add_child(gui.Label("Lamps"))
         # for i in range(num_lamps):
         #     self.iots.add_child(self.add_iot("T" + str(i)))
 
-        self.iots.add_fixed(separation_height)
+        self.iots.add_fixed(self.separation_height)
         self._settings_panel.add_child(self.iots)
+
+        self.config = gui.CollapsableVert("Configuration", 0.25 * em, gui.Margins(em, 0, 0, 0))
+
+        self.program_layout = gui.Vert()
+        self.program_layout.add_child(gui.Label("When"))
+        select_button = gui.Button("Select")
+        select_button.set_on_clicked(self._on_select)
+        self.program_layout.add_child(select_button)
+
+        # self.config.add_child(gui.Label("When"))
+        condition_button = gui.Button("Condition(s)")
+        action_button = gui.Button("Action(s)")
+        clear_button = gui.Button("Clear")
+        condition_button.set_on_clicked(self._on_condition)
+        action_button.set_on_clicked(self._on_action)
+        clear_button.set_on_clicked(self._on_clear)
+
+        self.config.add_child(self.program_layout)
+        self.config.add_fixed(self.separation_height_big)
+        # self.config.add_child(trigger_button)
+        self.config.add_child(condition_button)
+        self.config.add_child(action_button)
+        self.config.add_child(clear_button)
+
+        self._settings_panel.add_child(self.config)
+
         # Add other control items
         view_ctrls = gui.CollapsableVert("Controls", 0.25 * em, gui.Margins(em, 0, 0, 0))
         view_ctrls.set_is_open(False)
@@ -95,13 +121,13 @@ class AppWindow:
         h = gui.Horiz(0.25 * em)  # row 1
         h.add_child(self._fly_button)
         h.add_child(self._model_button)
-        view_ctrls.add_fixed(separation_height)
+        view_ctrls.add_fixed(self.separation_height)
         view_ctrls.add_child(h)
-        view_ctrls.add_fixed(separation_height)
+        view_ctrls.add_fixed(self.separation_height)
         view_ctrls.add_child(self._show_axes)
-        view_ctrls.add_fixed(separation_height)
+        view_ctrls.add_fixed(self.separation_height)
         view_ctrls.add_child(self._remove_ceiling)
-        view_ctrls.add_fixed(separation_height)
+        view_ctrls.add_fixed(self.separation_height)
 
         ## Point size
         self._point_size = gui.Slider(gui.Slider.INT)
@@ -111,15 +137,47 @@ class AppWindow:
         grid.add_child(gui.Label("Point size"))
         grid.add_child(self._point_size)
         view_ctrls.add_child(grid)
-        view_ctrls.add_fixed(separation_height)
-        self._settings_panel.add_fixed(separation_height)
+        view_ctrls.add_fixed(self.separation_height)
+        self._settings_panel.add_fixed(self.separation_height)
         self._settings_panel.add_child(view_ctrls)
 
         ## Apply layout
-        w.set_on_layout(self._on_layout)
-        w.add_child(self._scene)
-        w.add_child(self._settings_panel)
+        self._on_apply_layout()
         self._apply_settings()
+
+        self.recording_actions = False
+
+    def _on_clear(self):
+        print("Clear the program layout")
+
+    def _on_select(self):
+        curr_state = self.get_iot_states()
+        # self.recording_actions = True
+        # self.button_waiting =
+        print("zzy")
+
+    def _on_apply_layout(self):
+        self.window.set_on_layout(self._on_layout)
+        self.window.add_child(self._scene)
+        self.window.add_child(self._settings_panel)
+
+    def _on_condition(self):
+        self.program_layout.add_fixed(self.separation_height)
+        self.program_layout.add_child(gui.Label("And"))
+        select_button = gui.Button("Select")
+        select_button.set_on_clicked(self._on_select)
+        self.program_layout.add_child(select_button)
+        self._on_apply_layout()
+        print("zzy")
+
+    def _on_action(self):
+        self.program_layout.add_fixed(self.separation_height)
+        self.program_layout.add_child(gui.Label("Do"))
+        select_button = gui.Button("Select")
+        select_button.set_on_clicked(self._on_select)
+        self.program_layout.add_child(select_button)
+        self._on_apply_layout()
+        print("zzy")
 
     def _apply_settings(self):
         self._scene.scene.show_axes(self.settings.show_axes)
@@ -179,14 +237,18 @@ class AppWindow:
         switch.set_on_clicked(self.on_switch)
         return switch
 
-    def on_switch(self, is_on):
-        # get the states of all toggles
-        # the order is, 5 lights, 3 doors, 3 tablelamp
+    def get_iot_states(self):
         iot_states = []
         for v_item in self.iots.get_children()[0].get_children():
             for switch in v_item.get_children():
                 if type(switch).__name__ == "ToggleSwitch":
                     iot_states.append(int(switch.is_on))
+        return iot_states
+
+    def on_switch(self, is_on):
+        # get the states of all toggles
+        # the order is, 5 lights, 3 doors, 3 tablelamp
+        iot_states = self.get_iot_states()
 
         # iot_states = [int(x.is_on) for x in self.iots.get_children() if type(x).__name__ == "ToggleSwitch"]
         # currently D1-3, L1-5, so [0,1,2,3,4,5,6,7]

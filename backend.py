@@ -17,16 +17,29 @@ class Model(torch.nn.Module):
         output = self.linear(input)
         return output
 
+# class Model(torch.nn.Module):
+#     def __init__(self, sensors, chunks, vector_dims):
+#         super().__init__()
+#         self.linear = torch.nn.Sequential(
+#             torch.nn.Linear(sensors, chunks),
+#             torch.nn.Linear(chunks, chunks * vector_dims),
+#             torch.nn.ReLU(),
+#         )
+#
+#     def forward(self, input):
+#         output = self.linear(input)
+#         return output
+
 
 vector_dims = 2
 dataset_name = "models"
 train_data = torch.load(dataset_name + '/train.pth')
 eval_data = torch.load(dataset_name + '/eval.pth')
-ckpt = torch.load(dataset_name + '/model-new-8-sensors-keyframes-3000-adam-lr-4-l2-3-not-0-1.pth')
+ckpt = torch.load(dataset_name + '/model-2000-1-layer.pth')
 
 vecs = np.array([data[1].tolist() for data in train_data])
 vecs = vecs.reshape(vecs.shape[0], -1, vector_dims).transpose(1, 0, 2)
-n_sensors = train_data[0][0].shape[0]
+n_sensors = len(train_data[0][0])
 n_chunks = train_data[0][1].shape[0] // vector_dims
 model = Model(n_sensors, n_chunks, vector_dims)
 model.load_state_dict(ckpt)
@@ -49,7 +62,7 @@ def render_home(sensors):
     for chunk_id, (vec, pred_vec) in enumerate(zip(vecs, pred_vecs)):
         # find closest distance (most matching frame) from database
         frame_id = np.argmin(np.linalg.norm(vec - pred_vec, axis=1))
-        pcd = open3d.io.read_point_cloud("chunks-ply/{}-{}.ply".format(frame_id, chunk_id))
+        pcd = open3d.io.read_point_cloud("chunks-ply-old/{}-{}.ply".format(frame_id, chunk_id))
         pcd_combined += pcd
     assemble_end = time.time()
     print(assemble_end - assemble_start)
