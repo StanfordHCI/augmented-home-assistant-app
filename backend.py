@@ -35,7 +35,7 @@ vector_dims = 2
 dataset_name = "models"
 train_data = torch.load(dataset_name + '/train.pth')
 eval_data = torch.load(dataset_name + '/eval.pth')
-ckpt = torch.load(dataset_name + '/model-2000-1-layer.pth')
+ckpt = torch.load(dataset_name + '/model-new-1200-160-40-split.pth')
 
 vecs = np.array([data[1].tolist() for data in train_data])
 vecs = vecs.reshape(vecs.shape[0], -1, vector_dims).transpose(1, 0, 2)
@@ -62,7 +62,7 @@ def render_home(sensors):
     for chunk_id, (vec, pred_vec) in enumerate(zip(vecs, pred_vecs)):
         # find closest distance (most matching frame) from database
         frame_id = np.argmin(np.linalg.norm(vec - pred_vec, axis=1))
-        pcd = open3d.io.read_point_cloud("chunks-ply-old/{}-{}.ply".format(frame_id, chunk_id))
+        pcd = open3d.io.read_point_cloud("chunks-ply/{}-{}.ply".format(frame_id, chunk_id))
         pcd_combined += pcd
     assemble_end = time.time()
     print(assemble_end - assemble_start)

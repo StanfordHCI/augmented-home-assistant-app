@@ -42,8 +42,9 @@ class AppWindow:
         h_iot.add_child(v2)
 
         v3 = gui.Vert(0.5 * em)  # v2
-        num_lamps = 3
-        v3.add_child(gui.Label("Lamps"))
+        num_lamps = 2
+        v3.add_child(gui.Label("Day/Nights, "))
+        v3.add_child(gui.Label("Curtain"))
         for i in range(num_lamps):
             v3.add_child(self.add_iot("T" + str(i)))
         h_iot.add_child(v3)
@@ -76,7 +77,10 @@ class AppWindow:
         self.program_layout = gui.Vert()
         self.program_layout.add_child(gui.Label("When"))
         select_button = gui.Button("Select")
-        select_button.set_on_clicked(self._on_select)
+        my_new_function = self.create_on_select_function(select_button)
+        # my_new_function_ddd = my_new_function()
+        select_button.set_on_clicked(my_new_function)
+        # select_button.set_on_clicked(get_button_id("Trrrrry"))
         self.program_layout.add_child(select_button)
 
         # self.config.add_child(gui.Label("When"))
@@ -144,17 +148,46 @@ class AppWindow:
         ## Apply layout
         self._on_apply_layout()
         self._apply_settings()
-
         self.recording_actions = False
+
+        self.curr_button = None
 
     def _on_clear(self):
         print("Clear the program layout")
 
-    def _on_select(self):
-        curr_state = self.get_iot_states()
+    def create_on_select_function(*args, **kwargs):
+        """
+        This will help us dynamically create functions with given id and type
+        because the built-in set_on_clicked doesn't allow passing different arguments
+        so we have to create different functions for that
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        self = args[0]
+        button = args[1]
+
+        def function_template(*args, **kwargs):
+            self.curr_button = button
+            button.text = "Selecting an IoT..."
+
+        return function_template
+
+    def _on_select(self, sss):
         # self.recording_actions = True
         # self.button_waiting =
-        print("zzy")
+        print("ddddd")
+        print(sss)
+
+        button_states = [int(x.is_on) for x in self.program_layout.get_children() if type(x).__name__ == "Button"]
+        print(button_states)
+        # print()
+        # iot_states = []
+        # for v_item in self.iots.get_children()[0].get_children():
+        #     for switch in v_item.get_children():
+        #         if type(switch).__name__ == "ToggleSwitch":
+        #             iot_states.append(int(switch.is_on))
+        # print("zzy")
 
     def _on_apply_layout(self):
         self.window.set_on_layout(self._on_layout)
@@ -234,7 +267,8 @@ class AppWindow:
 
     def add_iot(self, name):
         switch = gui.ToggleSwitch(name)
-        switch.set_on_clicked(self.on_switch)
+        my_new_function = self.create_on_switch_function(name, switch.is_on)
+        switch.set_on_clicked(my_new_function)
         return switch
 
     def get_iot_states(self):
@@ -245,19 +279,59 @@ class AppWindow:
                     iot_states.append(int(switch.is_on))
         return iot_states
 
-    def on_switch(self, is_on):
-        # get the states of all toggles
-        # the order is, 5 lights, 3 doors, 3 tablelamp
-        iot_states = self.get_iot_states()
+    # def on_switch(self, is_on):
+    #     # get the states of all toggles
+    #     # the order is, 5 lights, 3 doors, 3 tablelamp
+    #     iot_states = self.get_iot_states()
+    #
+    #     # iot_states = [int(x.is_on) for x in self.iots.get_children() if type(x).__name__ == "ToggleSwitch"]
+    #     # currently D1-3, L1-5, so [0,1,2,3,4,5,6,7]
+    #     # but in reality, it should be D1,L1,L2,D3,L3,D2,L5,L4
+    #     # order = [0, 3, 4, 2, 5, 1, 7, 6]
+    #     # iot_states = [iot_states[i] for i in order]
+    #     print(iot_states)
+    #     geo = render_home(iot_states)
+    #     self.my_load(geometry=geo)
+    #     print(self.curr_button)
+    #     self.curr_button.text = "asdasdsf"
 
-        # iot_states = [int(x.is_on) for x in self.iots.get_children() if type(x).__name__ == "ToggleSwitch"]
-        # currently D1-3, L1-5, so [0,1,2,3,4,5,6,7]
-        # but in reality, it should be D1,L1,L2,D3,L3,D2,L5,L4
-        # order = [0, 3, 4, 2, 5, 1, 7, 6]
-        # iot_states = [iot_states[i] for i in order]
-        print(iot_states)
-        geo = render_home(iot_states)
-        self.my_load(geometry=geo)
+    def create_on_switch_function(*args, **kwargs):
+        """
+        This will help us dynamically create functions with given id and type
+        because the built-in set_on_clicked doesn't allow passing different arguments
+        so we have to create different functions for that
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        self = args[0]
+        switch_name = args[1]
+        switch_is_on = args[2]
+
+        def function_template(*args, **kwargs):
+            # get the states of all toggles
+            # the order is, 5 lights, 3 doors, 3 tablelamp
+            iot_states = self.get_iot_states()
+            print(iot_states)
+            geo = render_home(iot_states)
+            self.my_load(geometry=geo)
+            if self.curr_button:
+                self.curr_button.text = self.get_on_off_state_message(switch_name, switch_is_on)
+                self.curr_button = None
+
+        return function_template
+
+    def get_on_off_state_message(self, msg, is_on):
+        if msg.startswith('L'):
+            msg = "Light " + msg[1] + " is on" if is_on else "Light " + msg[1] + " is off"
+        elif msg.startswith("D"):
+            msg = "Door " + msg[1] + " is open" if is_on else "Door " + msg[1] + " is closed"
+        else:  # if startswith "T"
+            if msg == "T0":
+                msg = "It is bright outside" if is_on else "It is dark outside"
+            elif msg == "T1":
+                msg = "The curtains are open" if is_on else "The curtains are closed"
+        return msg
 
 
 def main():
@@ -265,7 +339,7 @@ def main():
     w = AppWindow(1024, 768)
     # initial sensors
     # sensors = [0, 0, 0, 0, 0, 0, 0, 0]
-    sensors = [0] * 11
+    sensors = [0] * 10
     geo = render_home(sensors)
     w.my_load(geometry=geo, first_time=True)
     gui.Application.instance.run()
