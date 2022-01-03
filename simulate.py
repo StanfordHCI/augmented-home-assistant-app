@@ -2,7 +2,7 @@ from unity_simulator.comm_unity import UnityCommunication
 
 comm = UnityCommunication()
 script_1 = [
-    '<char0> [Open] <door> (47)',
+    '<char0> [open] <door> (47)',
     '<char0> [switchon] <light> (58)',
     '<char0> [switchoff] <light> (344)',
     '<char0> [switchoff] <light> (402)',
@@ -12,23 +12,23 @@ script_1 = [
 script_2 = [
     '<char0> [switchon] <tablelamp> (377)',
     '<char0> [sit] <chair> (392)',
-    '<char0> [Open] <door> (47)',
+    '<char0> [open] <door> (47)',
     '<char0> [switchoff] <light> (278)',
     '<char0> [switchoff] <light> (239)',
     '<char0> [switchoff] <light> (58)',
     '<char0> [switchoff] <light> (344)',
     '<char0> [switchoff] <light> (402)',
-    '<char0> [Close] <door> (47)',
-    '<char0> [Sit] <bed> (394)']  # Add here your script
+    '<char0> [close] <door> (47)',
+    '<char0> [sit] <bed> (394)']  # Add here your script
 
 script_3 = [
     '<char0> [switchon] <tablelamp> (377)',
-    '<char0> [Open] <door> (47)',
+    '<char0> [open] <door> (47)',
     '<char0> [switchon] <light> (58)',
-    '<char0> [Open] <fridge> (163)',
-    '<char0> [Close] <fridge> (163)',
+    '<char0> [open] <fridge> (163)',
+    '<char0> [close] <fridge> (163)',
     '<char0> [switchoff] <light> (58)',
-    '<char0> [Sit] <bed> (394)']  # Add here your script
+    '<char0> [sit] <bed> (394)']  # Add here your script
 
 # 5 lights, 3 doors, 3 lamps
 local_lookup_table = [58, 239, 278, 344, 402, 47, 254, 305, 256, 376, 377]
@@ -96,26 +96,57 @@ class Processor:
         self.local_states_table = [0] * 5 + [0, 1, 1] + [0, 0, 0]
         return graph
 
+    def translate_from_state_to_action(self, msg):
+        if msg == "":
+            return None
+        local_state = int(msg.split()[0])
+        local_idx = int(msg.split()[1])
+        if local_idx <= 4:  # lights
+            action = "switchon" if local_state else "switchoff"
+            obj = "light"
+        elif 4 < local_idx <= 7:  # door
+            action = "open" if local_state else "close"
+            obj = "door"
+
+        else:  # 7 < local_idx lamp
+            action = "switchon" if local_state else "switchoff"
+            obj = "tablelamp"
+        id = str(local_lookup_table[local_idx])
+        return "[{}] <{}> ({})".format(action, obj, id)
+
     def process_programm(self, script, input):
         # maybe we will keep using one trigger for now (since if we combine both programs,
         # then their  will be two actions, we'd rather let users write two programs)
 
+        ## Input
+        trigger = self.translate_from_state_to_action(input[0])
+        conditions = input[1]
+        and_or = input[2]  # 0 is and, 1 is or
+        if_action = input[3]
+        else_action = input[4]
+
+        print(trigger)
+        print(conditions)
+        print(and_or)
+        print(if_action)
+        print(else_action)
+
         ## Empty
-        trigger = None
-        conditions = []
-        and_or = 0  # 0 is and, 1 is or
-        if_action = []
-        else_action = []
+        # trigger = None
+        # conditions = []
+        # and_or = 0  # 0 is and, 1 is or
+        # if_action = []
+        # else_action = []
 
         ## Task 1
-        trigger = "[Open] <door> (47)"
-        conditions = []
-        and_or = 0  # 0 is and, 1 is or
-        if_action = ["0 4", "1 0", "0 10", "0 3"]
-        else_action = []
+        # trigger = "[open] <door> (47)"
+        # conditions = []
+        # and_or = 0  # 0 is and, 1 is or
+        # if_action = ["0 4", "1 0", "0 10", "0 3"]
+        # else_action = []
 
         # ## Task 2
-        # trigger = "[Open] <door> (47)"
+        # trigger = "[open] <door> (47)"
         # # trigger = '[switchon] <tablelamp> (377)'
         # conditions = ["1 9", "1 10"]
         # and_or = 1  # 0 is and, 1 is or
@@ -124,11 +155,11 @@ class Processor:
 
         ## Task 3
         # need to update task 1 to the following ( adding the else)
-        trigger = "[Open] <door> (47)"
-        conditions = ["1 4"]
-        and_or = 0  # 0 is and, 1 is or
-        if_action = ["0 4", "1 0", "0 10", "0 3"]
-        else_action = ["1 0"]
+        # trigger = "[open] <door> (47)"
+        # conditions = ["1 4"]
+        # and_or = 0  # 0 is and, 1 is or
+        # if_action = ["0 4", "1 0", "0 10", "0 3"]
+        # else_action = ["1 0"]
 
         for action in script:
             if trigger and trigger in action:
@@ -219,8 +250,10 @@ class Processor:
         return light_states + door_states + tablelamp_states, graph
 
 
-def main(selected_task, input):
+def sim_in_unity(selected_task, input):
     my_p = Processor()
+    # print(sim_in_unity)
+    print(input)
     if selected_task == 0:
         #### Task 1
         graph = my_p.initialize_graph()
@@ -241,5 +274,5 @@ def main(selected_task, input):
         my_p.process_programm(script_3, input)
 
 
-if __name__ == '__main__':
-    main(0, None)
+# if __name__ == '__main__':
+#     sim_in_unity(0, None)

@@ -1,7 +1,10 @@
 from backend import render_home, remove_ceiling
 from settings import *
+from simulate import sim_in_unity
 import re
 import time
+
+MAX_NUM_BUTTONS = 20
 
 
 class AppWindow:
@@ -21,7 +24,9 @@ class AppWindow:
 
         # Local button list
         self.all_buttons = []
+        self.all_button_states = ["0 0"] * MAX_NUM_BUTTONS
         self.all_button_labels = []
+        self.all_button_and_or = []
         self.all_iots = []
         self.curr_button = None
 
@@ -75,21 +80,15 @@ class AppWindow:
         em = self.window.theme.font_size
         self.config = gui.CollapsableVert("Configuration", 0.25 * em, gui.Margins(em, 0, 0, 0))
         self.program_layout = gui.Vert()
-        select_label = gui.Label("When")
-        self.program_layout.add_child(select_label)
-        select_button = gui.Button("Select")
-        select_button.toggleable = True
-        my_new_function = self.create_on_select_function(select_button, False)
-        select_button.set_on_clicked(my_new_function)
-        self.all_buttons.append(select_button)
-        self.all_button_labels.append(select_label)
-        self.program_layout.add_child(select_button)
+
+        self.add_a_button("When", False, 0)
         self.config.add_child(self.program_layout)
 
         condition_button = gui.Button("Condition(s)")
         action_button = gui.Button("Action(s)")
         clear_button = gui.Button("Clear")
-        test_button = gui.Button("Test This Automation")
+        # test_button = gui.Button("Test This Automation")
+        test_button = gui.Button("Test")
         condition_button.set_on_clicked(self.on_condition)
         action_button.set_on_clicked(self.on_action)
         test_button.set_on_clicked(self.on_test)
@@ -162,9 +161,11 @@ class AppWindow:
         if latest_label == "When":
             self.add_a_button("If", False, latest_index_reverse)
         elif latest_label == "If" or latest_label == "And":
-            self.add_a_button("And", False, latest_index_reverse)
+            self.add_a_button("And", False, latest_index_reverse, toggle_visile=True)
+        elif latest_label == "Or":
+            self.add_a_button("Or", False, latest_index_reverse, toggle_visile=True)
         elif latest_label == "Do":
-            self.add_a_button("Else", False, latest_index_reverse)
+            self.add_a_button("Else", True, latest_index_reverse)
         else:
             print("Not available!")
 
@@ -177,37 +178,64 @@ class AppWindow:
                 latest_label = self.all_button_labels[::-1][i].text
                 latest_index_reverse = i
                 break
-        if latest_label == "When" or latest_label == "If" or latest_label == "And" or latest_label == "Else":
-            self.add_a_button("Do", True, latest_index_reverse)
-        else:  # latest_label == "Do":
-            print("Not available!")
+        # if latest_label == "When" or latest_label == "If" or latest_label == "And" or latest_label == "Or" or latest_label == "Else":
+        self.add_a_button("Do", True, latest_index_reverse)
+        # else:  # latest_label == "Do":
+        #     print("Not available!")
 
     def on_test(self):
-        all_shown_buttons = [button for button in self.all_buttons if button.visible]
-        all_shown_labels = [label for label in self.all_button_labels if label.visible]
-        assert len(all_shown_buttons) == len(all_shown_labels)
+        all_shown_labels = [label.text for label in self.all_button_labels if label.visible]
+        my_len = len(all_shown_labels)
+        all_iot_states = self.all_button_states[0:my_len]
 
-        # hacky
-        when_button = all_shown_buttons[0]
-        when_label = all_shown_labels[0]
-        do_button = all_shown_buttons[1]
-        do_label = all_shown_labels[1]
+        trigger = ""
+        conditions = []
+        and_or = 0  # 0 is and, 1 is or
+        if_action = []
+        else_action = []
 
-        when_iot_id, when_iot_states = self.get_state_from_message(when_button.text)
-        do_iot_id, do_iot_states = self.get_state_from_message(do_button.text)
+        else_start_idx = my_len
+        for i in range(my_len):
+            if all_shown_labels[i] == "When":
+                trigger = all_iot_states[i]
+            elif all_shown_labels[i] in ["If", "Or", "And"]:
+                conditions.append(all_iot_states[i])
+                if all_shown_labels[i] == "Or":
+                    and_or = 1
+            elif all_shown_labels[i] == "Do":
+                if_action.append(all_iot_states[i])
+            elif all_shown_labels[i] == "Else":
+                else_start_idx = i
+                break
+        for i in range(else_start_idx, my_len):
+            if all_shown_labels[i] in ["Else", "Do"]:
+                else_action.append(all_iot_states[i])
 
-        self.all_iots[when_iot_id].is_on = bool(when_iot_states)
-        iot_states = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        print(iot_states)
-        geo = render_home(iot_states)
-        self.my_load(geometry=geo)
-        time.sleep(10)
-        iot_states = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
-        print(iot_states)
-        geo = render_home(iot_states)
-        self.my_load(geometry=geo)
+        sim_in_unity(0, [trigger, conditions, and_or, if_action, else_action])
 
-    def add_a_button(self, name, is_action_button, latest_index_reverse):
+        # testtt = ['1 5', [], 0, ['0 3', '0 4', '0 10', '1 0'], []]
+        # sim_in_unity(0, testtt)
+
+        # condition
+        # do_button = all_shown_buttons[1]
+        # do_label = all_shown_labels[1]
+        #
+        # when_iot_id, when_iot_states = self.get_state_from_message(when_button.text)
+        # do_iot_id, do_iot_states = self.get_state_from_message(do_button.text)
+        #
+        # self.all_iots[when_iot_id].is_on = bool(when_iot_states)
+        # iot_states = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        # print(iot_states)
+        # geo = render_home(iot_states)
+        # self.my_load(geometry=geo)
+        # time.sleep(10)
+        # iot_states = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+        # print(iot_states)
+        # geo = render_home(iot_states)
+        # self.my_load(geometry=geo)
+
+    def add_a_button(self, name, is_action_button, latest_index_reverse, toggle_visile=False):
+        em = self.window.theme.font_size
         if latest_index_reverse >= 1:  # means there are invisiable button, we should use them first
             button = self.all_buttons[::-1][latest_index_reverse - 1]
             button.visible = True
@@ -218,20 +246,35 @@ class AppWindow:
             button.set_on_clicked(my_new_function)
         else:
             self.program_layout.add_fixed(self.separation_height)
+            h_layout = gui.Horiz(0.3 * em)
             select_label = gui.Label(name)
-            self.program_layout.add_child(select_label)
+            # ZHUOYUe add toggle
+            and_or_toggle = gui.ToggleSwitch("and/or")
+            button_index = len(self.all_buttons)
+            my_new_function = self.create_on_and_or_function(button_index)
+            and_or_toggle.set_on_clicked(my_new_function)
+            h_layout.add_child(select_label)
+            h_layout.add_child(and_or_toggle)
+            if not toggle_visile:
+                and_or_toggle.visible = False
+            if name == "Or":
+                and_or_toggle.is_on = True
+            self.program_layout.add_child(h_layout)
             select_button = gui.Button("Select")
             my_new_function = self.create_on_select_function(select_button, is_action_button)
             select_button.toggleable = True
             select_button.set_on_clicked(my_new_function)
             self.all_buttons.append(select_button)
             self.all_button_labels.append(select_label)
+            self.all_button_and_or.append(and_or_toggle)
+            self.program_layout.add_fixed(self.separation_height)
             self.program_layout.add_child(select_button)
             self._on_apply_layout()
 
     def add_iot(self, name):
         switch = gui.ToggleSwitch(name)
-        my_new_function = self.create_on_switch_function(name, switch.is_on)
+        switch_index = len(self.all_iots)
+        my_new_function = self.create_on_switch_function(name, switch_index)
         switch.set_on_clicked(my_new_function)
         self.all_iots.append(switch)
         return switch
@@ -262,15 +305,27 @@ class AppWindow:
 
         return function_template
 
+    def create_on_and_or_function(*args, **kwargs):
+        """
+        """
+        self = args[0]
+        button_index = args[1]
+
+        def function_template(*args, **kwargs):
+            switch_is_on = self.all_button_and_or[button_index].is_on
+            if switch_is_on:
+                self.all_button_labels[button_index].text = "Or"
+            else:
+                self.all_button_labels[button_index].text = "And"
+
+        return function_template
+
     def create_on_switch_function(*args, **kwargs):
         """
-        This will help us dynamically create functions with given id and type
-        because the built-in set_on_clicked doesn't allow passing different arguments
-        so we have to create different functions for that
         """
         self = args[0]
         switch_name = args[1]
-        switch_is_on = args[2]
+        switch_index = args[2]
 
         def function_template(*args, **kwargs):
             # get the states of all toggles
@@ -280,40 +335,54 @@ class AppWindow:
             geo = render_home(iot_states)
             self.my_load(geometry=geo)
             if self.curr_button:
-                self.curr_button.text = self.get_on_off_state_message(switch_name, switch_is_on)
+                curr_button_idx = self.all_buttons.index(self.curr_button)
+                print("Zhuoyue checking curr_button_idx")
+                print(curr_button_idx)
+                self.curr_button.text, self.all_button_states[curr_button_idx] = self.get_on_off_state_message(
+                    switch_name, self.all_iots[switch_index].is_on)
                 self.curr_button.is_on = False  # to change the color of the button
                 self.curr_button = None
 
         return function_template
 
     def get_on_off_state_message(self, msg, is_on):
+        state_info = "0 0"  # the 1st digit is on/off, the second digit is the index, in the order of 5 lights, 3 doors, 3 lamps
         if msg.startswith('L'):
+            state_info = str(int(is_on)) + " " + msg[1]
             if not self.curr_button_is_action:
                 msg = "Light " + msg[1] + " is on" if is_on else "Light " + msg[1] + " is off"
             else:
                 msg = "Turn on the light " + msg[1] if is_on else "Turn off the light " + msg[1]
+
         elif msg.startswith("D"):
+            state_info = str(int(is_on)) + " " + str(int(msg[1]) + 5)  # TODO: change this 5 to len(lights)
             if not self.curr_button_is_action:
                 msg = "Door " + msg[1] + " is open" if is_on else "Door " + msg[1] + " is closed"
             else:
                 msg = "Open the door " + msg[1] if is_on else "Close the door " + msg[1]
-        else:  # if startswith "T"
-            if msg == "T0":
-                if not self.curr_button_is_action:
-                    msg = "It is bright outside" if is_on else "It is dark outside"
-                else:
-                    msg = "This IoT can not be selected as an action"
-            elif msg == "T1":
-                if not self.curr_button_is_action:
-                    msg = "The curtains are open" if is_on else "The curtains are closed"
-                else:
-                    msg = "Open the curtains" if is_on else "Close the curtains"
-        return msg
 
-    def get_state_from_message(self, msg):
-        iot_id = [int(s) for s in msg.split() if s.isdigit()][0]
-        iot_states = 0 if "off" in msg else 1
-        return iot_id, iot_states
+        else:  # if startswith "T"
+            # if msg == "T0":
+            #     if not self.curr_button_is_action:
+            #         msg = "It is bright outside" if is_on else "It is dark outside"
+            #     else:
+            #         msg = "This IoT can not be selected as an action"
+            # elif msg == "T1":
+            #     if not self.curr_button_is_action:
+            #         msg = "The curtains are open" if is_on else "The curtains are closed"
+            #     else:
+            #         msg = "Open the curtains" if is_on else "Close the curtains"
+            state_info = str(int(is_on)) + " " + str(int(msg[1]) + 8)  # TODO: change this 8 to len(lights) + len(doors)
+            if not self.curr_button_is_action:
+                msg = "Lamp " + msg[1] + " is on" if is_on else "Lamp " + msg[1] + " is off"
+            else:
+                msg = "Turn on the lamp " + msg[1] if is_on else "Turn off the lamp " + msg[1]
+        return msg, state_info
+
+    # def get_state_from_message(self, msg):
+    #     iot_id = [int(s) for s in msg.split() if s.isdigit()][0]
+    #     iot_states = 0 if "off" in msg else 1
+    #     return iot_id, iot_states
 
     def _on_apply_layout(self):
         self.window.set_on_layout(self._on_layout)
