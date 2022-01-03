@@ -1,5 +1,6 @@
 from unity_simulator.comm_unity import UnityCommunication
 
+comm = UnityCommunication()
 script_1 = [
     '<char0> [Open] <door> (47)',
     '<char0> [switchon] <light> (58)',
@@ -218,23 +219,27 @@ class Processor:
         return light_states + door_states + tablelamp_states, graph
 
 
-if __name__ == '__main__':
-    comm = UnityCommunication()
+def main(selected_task, input):
     my_p = Processor()
-    ##### Task 1
-    # graph = my_p.initialize_graph()
-    # _ = comm.expand_scene(graph)
-    # comm.add_character('Chars/Female1', initial_room="bedroom")
-    # my_p.process_programm(script_1, _)
+    if selected_task == 0:
+        #### Task 1
+        graph = my_p.initialize_graph()
+        _ = comm.expand_scene(graph)
+        comm.add_character('Chars/Female1', initial_room="bedroom")
+        my_p.process_programm(script_1, input)
+    elif selected_task == 1:
+        #### Task 2
+        graph = my_p.initialize_graph_task_2()
+        _ = comm.expand_scene(graph)
+        comm.add_character('Chars/Female1', initial_room="bedroom")
+        my_p.process_programm(script_2, input)
+    else:
+        ##### Task 3
+        graph = my_p.initialize_graph_task_3()
+        _ = comm.expand_scene(graph)
+        comm.add_character('Chars/Female1', initial_room="bedroom")
+        my_p.process_programm(script_3, input)
 
-    ##### Task 2
-    # graph = my_p.initialize_graph_task_2()
-    # _ = comm.expand_scene(graph)
-    # comm.add_character('Chars/Female1', initial_room="bedroom")
-    # my_p.process_programm(script_2, "sss")
 
-    ##### Task 3
-    graph = my_p.initialize_graph_task_3()
-    _ = comm.expand_scene(graph)
-    comm.add_character('Chars/Female1', initial_room="bedroom")
-    my_p.process_programm(script_3, "sss")
+if __name__ == '__main__':
+    main(0, None)
