@@ -33,7 +33,6 @@ class AppWindow:
         if not self.only_UI:
             self._scene = gui.SceneWidget()
             self._scene.scene = rendering.Open3DScene(self.window.renderer)
-            self.mark_iot()
             self._scene.set_on_mouse(self._on_mouse_click_scene)
         em = self.window.theme.font_size
         self.separation_height = int(round(0.5 * em))
@@ -49,6 +48,8 @@ class AppWindow:
         self.all_button_labels = []
         self.all_button_and_or = []
         self.all_button_h_layout = []
+        self.all_3d_labels = []
+
         if not self.only_UI:
             self.all_iots = sensors
         else:
@@ -165,6 +166,11 @@ class AppWindow:
         self._remove_ceiling.checked = True  # remove the ceiling on default
         self._remove_ceiling.set_on_checked(self._on_remove_ceiling)
 
+        ## Remove ceiling
+        self._show_labels = gui.Checkbox("Show labels")
+        self._show_labels.checked = False  # remove the ceiling on default
+        self._show_labels.set_on_checked(self._on_show_labels)
+
         ## Add the previous two items
         h = gui.Horiz(0.25 * em)  # row 1
         h.add_child(self._fly_button)
@@ -175,6 +181,8 @@ class AppWindow:
         view_ctrls.add_child(self._show_axes)
         view_ctrls.add_fixed(self.separation_height)
         view_ctrls.add_child(self._remove_ceiling)
+        view_ctrls.add_fixed(self.separation_height)
+        view_ctrls.add_child(self._show_labels)
         view_ctrls.add_fixed(self.separation_height)
 
         ## Point size
@@ -510,8 +518,16 @@ class AppWindow:
     def _on_remove_ceiling(self, is_on):
         self.my_load()
 
+    def _on_show_labels(self, is_on):
+        if is_on:
+            if not self.all_3d_labels:
+                self.add_iot_3d_labels()
+        else:
+            if self.all_3d_labels:
+                self.remove_iot_3d_labels()
+
     def _on_mouse_click_scene(self, event):
-        if event.type == gui.MouseEvent.Type.BUTTON_DOWN  and event.is_modifier_down(
+        if event.type == gui.MouseEvent.Type.BUTTON_DOWN and event.is_modifier_down(
                 gui.KeyModifier.CTRL):
             def depth_callback(depth_image):
                 x = event.x - self._scene.frame.x
@@ -592,23 +608,7 @@ class AppWindow:
         cloud.colors = o3d.utility.Vector3dVector(colors)
         return cloud
 
-    def mark_iot(self):
-        # points = self.make_point_cloud(100, (0, 0, 0), 1.0)
-        # w = self.window
-        # widget3d = self._scene
-        # mat = rendering.MaterialRecord()
-        # mat.shader = "defaultUnlit"
-        # mat.point_size = 5 * w.scaling
-        # widget3d.scene.add_geometry("Points", points, mat)
-        # for idx in range(0, 5):
-        #     widget3d.add_3d_label(points.points[idx], "{}".format(idx))
-        # bbox = widget3d.scene.bounding_box
-        # widget3d.setup_camera(60.0, bbox, bbox.get_center())
-        # print("sdafidsuhafiu")
-        # points = [[3.873, 1.918, -3.8],
-        #           [2.897, 7.159, 0.297],
-        #           ]
-        #
+    def add_iot_3d_labels(self):
         for i in range(len(self.iot_pos)):
             if i <= 4:  # lights
                 color = gui.Color(1.0, 1.0, 1.0)
@@ -620,12 +620,15 @@ class AppWindow:
             else:
                 color = gui.Color(1.0, 1.0, 0.0)
                 text = "Lamp " + str(i - 8)
-
-            # x, y, z axis will be rendered as red, green, and blue
             label = self._scene.add_3d_label(np.array(self.iot_pos[i]), text)
             label.color = color
-            # my_label =gui.Label3D("sdsdfawefasdf", np.array([3.876, 1.756, 2.844]))
-            # self._scene.add_child(my_label)
+            self.all_3d_labels.append(label)
+
+    def remove_iot_3d_labels(self):
+        for i in range(len(self.iot_pos)):
+            label = self.all_3d_labels[i]
+            self._scene.remove_3d_label(label)
+        self.all_3d_labels = []
 
 
 def main():
