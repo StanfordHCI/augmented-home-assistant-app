@@ -1,9 +1,8 @@
 from backend import render_home, remove_ceiling
 from settings import *
 from simulate import sim_in_unity
-import re
+from controller import *
 import time
-
 MAX_NUM_BUTTONS = 20
 
 
@@ -31,6 +30,7 @@ class AppWindow:
         self.all_button_and_or = []
         self.all_iots = []
         self.curr_button = None
+        self.test_button = None
 
         # Add all collapsable
         self.add_iots()
@@ -40,6 +40,9 @@ class AppWindow:
         # Apply layout
         self._on_apply_layout()
         self._apply_settings()
+
+        # Initialize controller
+        self.controller = Controller()
 
     def add_iots(self):
         em = self.window.theme.font_size
@@ -91,22 +94,28 @@ class AppWindow:
         condition_button = gui.Button("Condition(s)")
         action_button = gui.Button("Action(s)")
         clear_button = gui.Button("Clear")
-        # test_button = gui.Button("Test This Automation")
         test_button = gui.Button("Test")
+        test_button.toggleable = True
+        deploy_button = gui.Button("Deploy")
         condition_button.set_on_clicked(self.on_condition)
         action_button.set_on_clicked(self.on_action)
         test_button.set_on_clicked(self.on_test)
+        deploy_button.set_on_clicked(self.on_deploy)
+        self.test_button = test_button
 
         self.config.add_fixed(self.separation_height_big)
         if not self.only_UI:
             self.config.add_child(gui.Label("----------------------------------------------------"))
         else:
-            self.config.add_child(gui.Label("---------------------------------------------------------------------------------"))
+            self.config.add_child(
+                gui.Label("---------------------------------------------------------------------------------"))
         self.config.add_child(condition_button)
         self.config.add_child(action_button)
-        self.config.add_child(clear_button)
         self.config.add_fixed(self.separation_height)
+        self.config.add_child(clear_button)
         self.config.add_child(test_button)
+        self.config.add_fixed(self.separation_height)
+        self.config.add_child(deploy_button)
         self.panel.add_child(self.config)
 
     def add_controls(self):
@@ -130,6 +139,7 @@ class AppWindow:
 
         ## Remove ceiling
         self._remove_ceiling = gui.Checkbox("Remove ceiling")
+        self._remove_ceiling.checked = True  # remove the ceiling on default
         self._remove_ceiling.set_on_checked(self._on_remove_ceiling)
 
         ## Add the previous two items
@@ -191,6 +201,17 @@ class AppWindow:
         #     print("Not available!")
 
     def on_test(self):
+        if self.test_button.is_on:
+            self.test_button.text = "Testing"
+            self.controller.initialize(self.get_test_deploy_data())
+        else:
+            self.test_button.text = "Test"
+
+
+    def on_deploy(self):
+        sim_in_unity(0, self.get_test_deploy_data())
+
+    def get_test_deploy_data(self):
         all_shown_labels = [label.text for label in self.all_button_labels if label.visible]
         my_len = len(all_shown_labels)
         all_iot_states = self.all_button_states[0:my_len]
@@ -217,29 +238,8 @@ class AppWindow:
         for i in range(else_start_idx, my_len):
             if all_shown_labels[i] in ["Else", "Do"]:
                 else_action.append(all_iot_states[i])
+        return [trigger, conditions, and_or, if_action, else_action]
 
-        sim_in_unity(0, [trigger, conditions, and_or, if_action, else_action])
-
-        # testtt = ['1 5', [], 0, ['0 3', '0 4', '0 10', '1 0'], []]
-        # sim_in_unity(0, testtt)
-
-        # condition
-        # do_button = all_shown_buttons[1]
-        # do_label = all_shown_labels[1]
-        #
-        # when_iot_id, when_iot_states = self.get_state_from_message(when_button.text)
-        # do_iot_id, do_iot_states = self.get_state_from_message(do_button.text)
-        #
-        # self.all_iots[when_iot_id].is_on = bool(when_iot_states)
-        # iot_states = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        # print(iot_states)
-        # geo = render_home(iot_states)
-        # self.my_load(geometry=geo)
-        # time.sleep(10)
-        # iot_states = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
-        # print(iot_states)
-        # geo = render_home(iot_states)
-        # self.my_load(geometry=geo)
 
     def add_a_button(self, name, is_action_button, latest_index_reverse, toggle_visile=False):
         em = self.window.theme.font_size
@@ -288,10 +288,13 @@ class AppWindow:
 
     def get_iot_states(self):
         iot_states = []
-        for v_item in self.iots.get_children()[0].get_children():
-            for switch in v_item.get_children():
-                if type(switch).__name__ == "ToggleSwitch":
-                    iot_states.append(int(switch.is_on))
+        # for v_item in self.iots.get_children()[0].get_children():
+        #     for switch in v_item.get_children():
+        #         if type(switch).__name__ == "ToggleSwitch":
+        #             iot_states.append(int(switch.is_on))
+        #
+        for iot in self.all_iots:
+            iot_states.append(int(iot.is_on))
         return iot_states
 
     def create_on_select_function(*args, **kwargs):
@@ -343,17 +346,25 @@ class AppWindow:
             self.my_load(geometry=geo)
             if self.curr_button:
                 curr_button_idx = self.all_buttons.index(self.curr_button)
-                print("Zhuoyue checking curr_button_idx")
-                print(curr_button_idx)
                 self.curr_button.text, self.all_button_states[curr_button_idx] = self.get_on_off_state_message(
                     switch_name, self.all_iots[switch_index].is_on)
                 self.curr_button.is_on = False  # to change the color of the button
                 self.curr_button = None
-
+            if self.test_button.is_on:  # we are in the testing mode
+                # time.sleep(2) # sleep doesn't really work...it's still gonna wait until the function is done...
+                trigger = str(iot_states[switch_index]) + " " + str(switch_index)
+                new_states = self.controller.check_udpate(trigger, iot_states)
+                if new_states:
+                    geo = render_home(iot_states)
+                    self.my_load(geometry=geo)
+                    for j in range(len(iot_states)):
+                        # update the toggle
+                        self.all_iots[j].is_on = bool(iot_states[j])
         return function_template
 
     def get_on_off_state_message(self, msg, is_on):
-        state_info = "0 0"  # the 1st digit is on/off, the second digit is the index, in the order of 5 lights, 3 doors, 3 lamps
+        # "state_info" the 1st digit is on/off, the second digit is the index,
+        # in the order of 5 lights, 3 doors, 3 lamps
         if msg.startswith('L'):
             state_info = str(int(is_on)) + " " + msg[1]
             if not self.curr_button_is_action:
@@ -414,7 +425,7 @@ class AppWindow:
         if not self.only_UI:
             self._scene.frame = r
             width = 17 * layout_context.theme.font_size
-        else: # this controlls the width of the panel
+        else:  # this controlls the width of the panel
             width = 25 * layout_context.theme.font_size
         height = min(r.height,
                      self.panel.calc_preferred_size(layout_context, gui.Widget.Constraints()).height)

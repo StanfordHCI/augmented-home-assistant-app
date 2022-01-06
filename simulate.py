@@ -2,16 +2,17 @@ from unity_simulator.comm_unity import UnityCommunication
 
 comm = UnityCommunication()
 script_1 = [
+    '<char0> [sit] <chair> (392)',
     '<char0> [open] <door> (47)',
     '<char0> [switchon] <light> (58)',
-    '<char0> [switchoff] <light> (344)',
     '<char0> [switchoff] <light> (402)',
     '<char0> [switchoff] <tablelamp> (377)',
-    '<char0> [Walk] <kitchen> (11)']  # Add here your script
+    '<char0> [open] <microwave> (172)'
+]  # Add here your script
+
 
 script_2 = [
     '<char0> [switchon] <tablelamp> (377)',
-    '<char0> [sit] <chair> (392)',
     '<char0> [open] <door> (47)',
     '<char0> [switchoff] <light> (278)',
     '<char0> [switchoff] <light> (239)',
@@ -48,7 +49,7 @@ class Processor:
         # self.states = [1] * 10
         # because the unity side door states are not accurate, so I have to keep a local copy
         self.local_states_table = [1] * 11
-        self.excluded_list = [163]  # 163 is fridge
+        self.excluded_list = [163, 172]  # 163 is fridge, 172 is microwave
 
     def initialize_graph(self):
         comm.reset()
@@ -66,9 +67,7 @@ class Processor:
         door2['states'] = ['CLOSED']
         l5 = find_nodes(graph, class_name='lightswitch')[4]
         l5['states'] = ['ON']
-        l5 = find_nodes(graph, class_name='lightswitch')[3]
-        l5['states'] = ['ON']
-        self.local_states_table = [0, 0, 0, 1, 1] + [0, 0, 1] + [0, 0, 1]
+        self.local_states_table = [0, 0, 0, 0, 1] + [0, 0, 1] + [0, 0, 1]
         return graph
 
     def initialize_graph_task_2(self):
@@ -143,7 +142,7 @@ class Processor:
         # trigger = "[open] <door> (47)"
         # conditions = []
         # and_or = 0  # 0 is and, 1 is or
-        # if_action = ["0 4", "1 0", "0 10", "0 3"]
+        # if_action = ["0 4", "1 0", "0 10"]
         # else_action = []
 
         # ## Task 2
@@ -155,11 +154,11 @@ class Processor:
         # else_action = []
 
         ## Task 3
-        # need to update task 1 to the following ( adding the else)
+        # need to update task 1 to the following (adding the else)
         # trigger = "[open] <door> (47)"
         # conditions = ["1 4"]
         # and_or = 0  # 0 is and, 1 is or
-        # if_action = ["0 4", "1 0", "0 10", "0 3"]
+        # if_action = ["0 4", "1 0", "0 10"]
         # else_action = ["1 0"]
 
         for action in script:
@@ -190,7 +189,6 @@ class Processor:
                         self.local_states_table[local_idx] = local_state
                 # updated_script.append(action)
                 self.expand_current_states(self.local_states_table, graph)
-
             else:  # if the current action is not a trigger
                 self.my_render_script(action)
 
@@ -275,5 +273,8 @@ def sim_in_unity(selected_task, input):
         my_p.process_programm(script_3, input)
 
 
-# if __name__ == '__main__':
-#     sim_in_unity(2, None)
+if __name__ == '__main__':
+    sim_in_unity(0, None)
+    # script_new = [
+    #     '<char0> [open] <door> (47)']  # Add here your script
+    # comm.render_script(script_new, find_solution=False)
