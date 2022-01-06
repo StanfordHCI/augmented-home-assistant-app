@@ -238,7 +238,7 @@ class AppWindow:
             self.test_button.text = "Test"
 
     def on_deploy(self):
-        sim_in_unity(0, self.get_test_deploy_data())
+        sim_in_unity(1, self.get_test_deploy_data())
 
     def get_test_deploy_data(self):
         all_shown_labels = [label.text for label in self.all_button_labels if label.visible]
@@ -456,13 +456,13 @@ class AppWindow:
             #         msg = "The curtains are open" if is_on else "The curtains are closed"
             #     else:
             #         msg = "Open the curtains" if is_on else "Close the curtains"
-            state_info = str(int(is_on)) + " " + str(curr_button_idx)  # TODO: change this 8 to len(lights) + len(doors)
+            state_info = str(int(is_on)) + " " + str(curr_iot_idx)  # TODO: change this 8 to len(lights) + len(doors)
             if not curr_button_is_action:
-                msg = "Lamp " + str(curr_button_idx - 8) + " is on" if is_on else "Lamp " + str(
-                    curr_button_idx - 8) + " is off"
+                msg = "Lamp " + str(curr_iot_idx - 8) + " is on" if is_on else "Lamp " + str(
+                    curr_iot_idx - 8) + " is off"
             else:
-                msg = "Turn on the lamp " + str(curr_button_idx - 8) if is_on else "Turn off the lamp " + str(
-                    curr_button_idx - 8)
+                msg = "Turn on the lamp " + str(curr_iot_idx - 8) if is_on else "Turn off the lamp " + str(
+                    curr_iot_idx - 8)
         return msg, state_info
 
     # def get_state_from_message(self, msg):
