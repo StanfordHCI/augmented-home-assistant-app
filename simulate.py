@@ -119,24 +119,25 @@ class Processor:
         # then their  will be two actions, we'd rather let users write two programs)
 
         ## Input
-        trigger = self.translate_from_state_to_action(input[0])
-        conditions = input[1]
-        and_or = input[2]  # 0 is and, 1 is or
-        if_action = input[3]
-        else_action = input[4]
+        if input is not None:
+            trigger = self.translate_from_state_to_action(input[0])
+            conditions = input[1]
+            and_or = input[2]  # 0 is and, 1 is or
+            if_action = input[3]
+            else_action = input[4]
+        else:
+            # Empty
+            trigger = None
+            conditions = []
+            and_or = 0  # 0 is and, 1 is or
+            if_action = []
+            else_action = []
 
         print(trigger)
         print(conditions)
         print(and_or)
         print(if_action)
         print(else_action)
-
-        ## Empty
-        # trigger = None
-        # conditions = []
-        # and_or = 0  # 0 is and, 1 is or
-        # if_action = []
-        # else_action = []
 
         ## Task 1
         # trigger = "[open] <door> (47)"
@@ -275,4 +276,4 @@ def sim_in_unity(selected_task, input):
 
 
 # if __name__ == '__main__':
-#     sim_in_unity(0, None)
+#     sim_in_unity(2, None)

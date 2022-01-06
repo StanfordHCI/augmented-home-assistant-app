@@ -8,19 +8,21 @@ MAX_NUM_BUTTONS = 20
 
 
 class AppWindow:
-    def __init__(self, width, height):
+    def __init__(self, width, height, only_UI=False):
+        self.only_UI = only_UI
         self.settings = Settings()
         self.width = width
         self.height = height
         self.settings.new_ibl_name = gui.Application.instance.resource_path + "/" + "default"
         self.window = gui.Application.instance.create_window("Augmented Home Assistant", self.width, self.height)
-        self._scene = gui.SceneWidget()
-        self._scene.scene = rendering.Open3DScene(self.window.renderer)
+        if not self.only_UI:
+            self._scene = gui.SceneWidget()
+            self._scene.scene = rendering.Open3DScene(self.window.renderer)
         em = self.window.theme.font_size
         self.separation_height = int(round(0.5 * em))
         self.separation_height_small = int(round(0.1 * em))
         self.separation_height_big = int(round(3 * em))
-        self.panel = gui.Vert(0, gui.Margins(0.25 * em, 0.25 * em, 0.25 * em, 0.25 * em))
+        self.panel = gui.Vert(0, gui.Margins(0.25 * em, 0.25 * em, 1 * em, 0.25 * em))
 
         # Local button list
         self.all_buttons = []
@@ -44,8 +46,10 @@ class AppWindow:
         self.iots = gui.CollapsableVert("IoTs", 0.25 * em, gui.Margins(em, 0, 0, 0))
 
         # horizontal layout
-        h_iot = gui.Horiz(2 * em)
-
+        if not self.only_UI:
+            h_iot = gui.Horiz(2 * em)
+        else:
+            h_iot = gui.Horiz(6 * em)
         # Add Lights
         v = gui.Vert(0.5 * em)
         num_lights = 5
@@ -94,7 +98,10 @@ class AppWindow:
         test_button.set_on_clicked(self.on_test)
 
         self.config.add_fixed(self.separation_height_big)
-        self.config.add_child(gui.Label("-------------------------------------------------------"))
+        if not self.only_UI:
+            self.config.add_child(gui.Label("----------------------------------------------------"))
+        else:
+            self.config.add_child(gui.Label("---------------------------------------------------------------------------------"))
         self.config.add_child(condition_button)
         self.config.add_child(action_button)
         self.config.add_child(clear_button)
@@ -386,24 +393,29 @@ class AppWindow:
 
     def _on_apply_layout(self):
         self.window.set_on_layout(self._on_layout)
-        self.window.add_child(self._scene)
+        if not self.only_UI:
+            self.window.add_child(self._scene)
         self.window.add_child(self.panel)
 
     def _apply_settings(self):
-        self._scene.scene.show_axes(self.settings.show_axes)
-        self._show_axes.checked = self.settings.show_axes
-        self._point_size.double_value = self.settings.material.point_size
-        if self.settings.apply_material:
-            self._scene.scene.update_material(self.settings.material)
-            self.settings.apply_material = False
-        # !!! we have to keep the following line, if not, the model is gonna look really dark
-        self._scene.scene.scene.set_indirect_light_intensity(
-            self.settings.ibl_intensity)
+        if not self.only_UI:
+            self._scene.scene.show_axes(self.settings.show_axes)
+            self._show_axes.checked = self.settings.show_axes
+            self._point_size.double_value = self.settings.material.point_size
+            if self.settings.apply_material:
+                self._scene.scene.update_material(self.settings.material)
+                self.settings.apply_material = False
+            # !!! we have to keep the following line, if not, the model is gonna look really dark
+            self._scene.scene.scene.set_indirect_light_intensity(
+                self.settings.ibl_intensity)
 
     def _on_layout(self, layout_context):
         r = self.window.content_rect
-        self._scene.frame = r
-        width = 17 * layout_context.theme.font_size
+        if not self.only_UI:
+            self._scene.frame = r
+            width = 17 * layout_context.theme.font_size
+        else: # this controlls the width of the panel
+            width = 25 * layout_context.theme.font_size
         height = min(r.height,
                      self.panel.calc_preferred_size(layout_context, gui.Widget.Constraints()).height)
         self.panel.frame = gui.Rect(r.get_right() - width, r.y, width,
@@ -428,27 +440,36 @@ class AppWindow:
         self.my_load()
 
     def my_load(self, geometry=None, first_time=False):
-        self._scene.scene.clear_geometry()
-        if not geometry:
-            geometry = self.geometry
-        else:
-            self.geometry = geometry
-        if self._remove_ceiling.checked:
-            geometry = remove_ceiling(geometry)
-        self._scene.scene.add_geometry("__model__", geometry,
-                                       self.settings.material)
-        if first_time:
-            # if we comment out the following two lines of code...the camera won't be rest, which is good
-            bounds = geometry.get_axis_aligned_bounding_box()
-            self._scene.setup_camera(60, bounds, bounds.get_center())
+        if not self.only_UI:
+            self._scene.scene.clear_geometry()
+            if not geometry:
+                geometry = self.geometry
+            else:
+                self.geometry = geometry
+            if self._remove_ceiling.checked:
+                geometry = remove_ceiling(geometry)
+            self._scene.scene.add_geometry("__model__", geometry,
+                                           self.settings.material)
+            if first_time:
+                # if we comment out the following two lines of code...the camera won't be rest, which is good
+                bounds = geometry.get_axis_aligned_bounding_box()
+                self._scene.setup_camera(60, bounds, bounds.get_center())
 
 
 def main():
+    only_UI = False
     gui.Application.instance.initialize()
-    w = AppWindow(1024, 768)
+    if not only_UI:
+        width = 1024
+        height = 768
+    else:
+        width = 400
+        height = 550
+    w = AppWindow(width, height, only_UI=only_UI)
     sensors = [0] * 11
-    geo = render_home(sensors)
-    w.my_load(geometry=geo, first_time=True)
+    if not only_UI:
+        geo = render_home(sensors)
+        w.my_load(geometry=geo, first_time=True)
     gui.Application.instance.run()
 
 
