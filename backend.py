@@ -20,7 +20,7 @@ vector_dims = 2
 dataset_name = "models"
 train_data = torch.load(dataset_name + '/dec-27-train.pth')
 eval_data = torch.load(dataset_name + '/dec-27-eval.pth')
-ckpt = torch.load(dataset_name + '/dec-27-model-2000-1-layer.pth')
+ckpt = torch.load(dataset_name + '/dec-27-model-4096-new-loss.pth')
 
 vecs = np.array([data[1].tolist() for data in train_data])
 vecs = vecs.reshape(vecs.shape[0], -1, vector_dims).transpose(1, 0, 2)

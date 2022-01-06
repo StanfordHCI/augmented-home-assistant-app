@@ -2,7 +2,10 @@ from backend import render_home, remove_ceiling
 from settings import *
 from simulate import sim_in_unity
 from controller import *
+import numpy as np
+import open3d as o3d
 import time
+
 MAX_NUM_BUTTONS = 20
 
 
@@ -17,20 +20,29 @@ class AppWindow:
         if not self.only_UI:
             self._scene = gui.SceneWidget()
             self._scene.scene = rendering.Open3DScene(self.window.renderer)
+            self.mark_iot()
+            self._scene.set_on_mouse(self._on_mouse__scene)
         em = self.window.theme.font_size
+        self.info = gui.Label("")
+        self.info.visible = False
+        self.window.add_child(self.info)
         self.separation_height = int(round(0.5 * em))
         self.separation_height_small = int(round(0.1 * em))
         self.separation_height_big = int(round(3 * em))
         self.panel = gui.Vert(0, gui.Margins(0.25 * em, 0.25 * em, 1 * em, 0.25 * em))
+        self.config = gui.CollapsableVert("Configuration", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        self.program_layout = gui.Vert()
 
         # Local button list
         self.all_buttons = []
         self.all_button_states = ["0 0"] * MAX_NUM_BUTTONS
         self.all_button_labels = []
         self.all_button_and_or = []
+        self.all_button_h_layout = []
         self.all_iots = []
         self.curr_button = None
         self.test_button = None
+        self.initialize_all_buttons()
 
         # Add all collapsable
         self.add_iots()
@@ -84,11 +96,7 @@ class AppWindow:
         self.panel.add_child(self.iots)
 
     def add_configs(self):
-        em = self.window.theme.font_size
-        self.config = gui.CollapsableVert("Configuration", 0.25 * em, gui.Margins(em, 0, 0, 0))
-        self.program_layout = gui.Vert()
-
-        self.add_a_button("When", False, 0)
+        self.add_a_button("When", MAX_NUM_BUTTONS, toggle_visile=False)
         self.config.add_child(self.program_layout)
 
         condition_button = gui.Button("Condition(s)")
@@ -168,7 +176,6 @@ class AppWindow:
 
     def on_condition(self):
         reversed_all_buttons = self.all_buttons[::-1]
-        latest_label = "when"
         latest_index_reverse = 0
         for i in range(len(reversed_all_buttons)):
             if reversed_all_buttons[i].visible:
@@ -176,27 +183,27 @@ class AppWindow:
                 latest_index_reverse = i
                 break
         if latest_label == "When":
-            self.add_a_button("If", False, latest_index_reverse)
+            self.add_a_button("If", latest_index_reverse, toggle_visile=False)
         elif latest_label == "If" or latest_label == "And":
-            self.add_a_button("And", False, latest_index_reverse, toggle_visile=True)
+            self.add_a_button("And", latest_index_reverse, toggle_visile=True)
         elif latest_label == "Or":
-            self.add_a_button("Or", False, latest_index_reverse, toggle_visile=True)
+            self.add_a_button("Or", latest_index_reverse, toggle_visile=True)
         elif latest_label == "Do":
-            self.add_a_button("Else", True, latest_index_reverse)
+            self.add_a_button("Else", latest_index_reverse)
         else:
             print("Not available!")
 
     def on_action(self):
         reversed_all_buttons = self.all_buttons[::-1]
-        latest_label = "when"
         latest_index_reverse = 0
         for i in range(len(reversed_all_buttons)):
             if reversed_all_buttons[i].visible:
                 latest_label = self.all_button_labels[::-1][i].text
                 latest_index_reverse = i
                 break
-        # if latest_label == "When" or latest_label == "If" or latest_label == "And" or latest_label == "Or" or latest_label == "Else":
-        self.add_a_button("Do", True, latest_index_reverse)
+        # if latest_label == "When" or latest_label == "If" or latest_label == "And"
+        # or latest_label == "Or" or latest_label == "Else":
+        self.add_a_button("Do", True, latest_index_reverse, toggle_visile=False)
         # else:  # latest_label == "Do":
         #     print("Not available!")
 
@@ -206,7 +213,6 @@ class AppWindow:
             self.controller.initialize(self.get_test_deploy_data())
         else:
             self.test_button.text = "Test"
-
 
     def on_deploy(self):
         sim_in_unity(0, self.get_test_deploy_data())
@@ -240,21 +246,33 @@ class AppWindow:
                 else_action.append(all_iot_states[i])
         return [trigger, conditions, and_or, if_action, else_action]
 
-
-    def add_a_button(self, name, is_action_button, latest_index_reverse, toggle_visile=False):
-        em = self.window.theme.font_size
+    def add_a_button(self, name, latest_index_reverse, toggle_visile=False):
+        print(latest_index_reverse)
         if latest_index_reverse >= 1:  # means there are invisiable button, we should use them first
+            print("reusing button")
             button = self.all_buttons[::-1][latest_index_reverse - 1]
-            button.visible = True
+            select_label = self.all_button_labels[::-1][latest_index_reverse - 1]
+            and_or_toggle = self.all_button_and_or[::-1][latest_index_reverse - 1]
+            h_layout = self.all_button_h_layout[::-1][latest_index_reverse - 1]
+
             button.text = "Select"
-            self.all_button_labels[::-1][latest_index_reverse - 1].text = name
-            my_new_function = self.create_on_select_function(button, is_action_button)
-            button.toggleable = True
-            button.set_on_clicked(my_new_function)
-        else:
-            self.program_layout.add_fixed(self.separation_height)
-            h_layout = gui.Horiz(0.3 * em)
-            select_label = gui.Label(name)
+            select_label.text = name
+
+            button.visible = True
+            if toggle_visile:
+                and_or_toggle.visible = True
+            select_label.visible = True
+            h_layout.visible = True
+            self.window.add_child(self.panel)  # this will update the layout
+
+    def initialize_all_buttons(self):
+        em = self.window.theme.font_size
+        for i in range(MAX_NUM_BUTTONS):
+            # self.program_layout.add_fixed(self.separation_height)
+            # margin: left, top, right, bottom
+            h_layout = gui.Horiz(0, gui.Margins(0 * em, 0.6 * em, 0.5 * em,
+                                                0.5 * em))
+            select_label = gui.Label("")
             # ZHUOYUe add toggle
             and_or_toggle = gui.ToggleSwitch("and/or")
             button_index = len(self.all_buttons)
@@ -262,21 +280,21 @@ class AppWindow:
             and_or_toggle.set_on_clicked(my_new_function)
             h_layout.add_child(select_label)
             h_layout.add_child(and_or_toggle)
-            if not toggle_visile:
-                and_or_toggle.visible = False
-            if name == "Or":
-                and_or_toggle.is_on = True
+
             self.program_layout.add_child(h_layout)
             select_button = gui.Button("Select")
-            my_new_function = self.create_on_select_function(select_button, is_action_button)
+            my_new_function = self.create_on_select_function(select_button)
             select_button.toggleable = True
             select_button.set_on_clicked(my_new_function)
+            select_button.visible = False
+            and_or_toggle.visible = False
+            select_label.visible = False
+            h_layout.visible = False
             self.all_buttons.append(select_button)
             self.all_button_labels.append(select_label)
             self.all_button_and_or.append(and_or_toggle)
-            self.program_layout.add_fixed(self.separation_height)
+            self.all_button_h_layout.append(h_layout)
             self.program_layout.add_child(select_button)
-            self._on_apply_layout()
 
     def add_iot(self, name):
         switch = gui.ToggleSwitch(name)
@@ -288,11 +306,6 @@ class AppWindow:
 
     def get_iot_states(self):
         iot_states = []
-        # for v_item in self.iots.get_children()[0].get_children():
-        #     for switch in v_item.get_children():
-        #         if type(switch).__name__ == "ToggleSwitch":
-        #             iot_states.append(int(switch.is_on))
-        #
         for iot in self.all_iots:
             iot_states.append(int(iot.is_on))
         return iot_states
@@ -305,12 +318,11 @@ class AppWindow:
         """
         self = args[0]
         button = args[1]
+
         # if the current button is action button, the text will be different
-        button_is_action = args[2]
 
         def function_template(*args, **kwargs):
             self.curr_button = button
-            self.curr_button_is_action = button_is_action
             button.text = "Selecting an IoT..."
 
         return function_template
@@ -347,7 +359,7 @@ class AppWindow:
             if self.curr_button:
                 curr_button_idx = self.all_buttons.index(self.curr_button)
                 self.curr_button.text, self.all_button_states[curr_button_idx] = self.get_on_off_state_message(
-                    switch_name, self.all_iots[switch_index].is_on)
+                    switch_name, self.all_iots[switch_index].is_on, curr_button_idx)
                 self.curr_button.is_on = False  # to change the color of the button
                 self.curr_button = None
             if self.test_button.is_on:  # we are in the testing mode
@@ -360,21 +372,23 @@ class AppWindow:
                     for j in range(len(iot_states)):
                         # update the toggle
                         self.all_iots[j].is_on = bool(iot_states[j])
+
         return function_template
 
-    def get_on_off_state_message(self, msg, is_on):
+    def get_on_off_state_message(self, msg, is_on, curr_button_idx):
         # "state_info" the 1st digit is on/off, the second digit is the index,
         # in the order of 5 lights, 3 doors, 3 lamps
+        curr_button_is_action = self.all_button_labels[curr_button_idx].text == "Do"
         if msg.startswith('L'):
             state_info = str(int(is_on)) + " " + msg[1]
-            if not self.curr_button_is_action:
+            if not curr_button_is_action:
                 msg = "Light " + msg[1] + " is on" if is_on else "Light " + msg[1] + " is off"
             else:
                 msg = "Turn on the light " + msg[1] if is_on else "Turn off the light " + msg[1]
 
         elif msg.startswith("D"):
             state_info = str(int(is_on)) + " " + str(int(msg[1]) + 5)  # TODO: change this 5 to len(lights)
-            if not self.curr_button_is_action:
+            if not curr_button_is_action:
                 msg = "Door " + msg[1] + " is open" if is_on else "Door " + msg[1] + " is closed"
             else:
                 msg = "Open the door " + msg[1] if is_on else "Close the door " + msg[1]
@@ -391,7 +405,7 @@ class AppWindow:
             #     else:
             #         msg = "Open the curtains" if is_on else "Close the curtains"
             state_info = str(int(is_on)) + " " + str(int(msg[1]) + 8)  # TODO: change this 8 to len(lights) + len(doors)
-            if not self.curr_button_is_action:
+            if not curr_button_is_action:
                 msg = "Lamp " + msg[1] + " is on" if is_on else "Lamp " + msg[1] + " is off"
             else:
                 msg = "Turn on the lamp " + msg[1] if is_on else "Turn off the lamp " + msg[1]
@@ -404,9 +418,13 @@ class AppWindow:
 
     def _on_apply_layout(self):
         self.window.set_on_layout(self._on_layout)
-        if not self.only_UI:
-            self.window.add_child(self._scene)
+        self.window.add_child(self._scene)
         self.window.add_child(self.panel)
+
+    # def my_on_apply_layout(self):
+    #     # self._scene.remove_3d_label(self.my_laaabl)
+    #     self.window.add_child(self.panel)
+    #     print("sdadf")
 
     def _apply_settings(self):
         if not self.only_UI:
@@ -432,6 +450,10 @@ class AppWindow:
         self.panel.frame = gui.Rect(r.get_right() - width, r.y, width,
                                     height)
 
+        # for the self.info label
+        pref = self.info.calc_preferred_size(layout_context, gui.Widget.Constraints())
+        self.info.frame = gui.Rect(r.x, r.get_bottom() - pref.height, pref.width, pref.height)
+
     def _set_mouse_mode_fly(self):
         self._scene.set_view_controls(gui.SceneWidget.Controls.FLY)
 
@@ -450,6 +472,50 @@ class AppWindow:
     def _on_remove_ceiling(self, is_on):
         self.my_load()
 
+    def _on_mouse__scene(self, event):
+        # We could override BUTTON_DOWN without a modifier, but that would
+        # interfere with manipulating the scene.
+        if event.type == gui.MouseEvent.Type.BUTTON_DOWN and event.is_modifier_down(
+                gui.KeyModifier.CTRL):
+
+            def depth_callback(depth_image):
+                # Coordinates are expressed in absolute coordinates of the
+                # window, but to dereference the image correctly we need them
+                # relative to the origin of the widget. Note that even if the
+                # scene widget is the only thing in the window, if a menubar
+                # exists it also takes up space in the window (except on macOS).
+                x = event.x - self._scene.frame.x
+                y = event.y - self._scene.frame.y
+                # Note that np.asarray() reverses the axes.
+                depth = np.asarray(depth_image)[y, x]
+
+                if depth == 1.0:  # clicked on nothing (i.e. the far plane)
+                    text = ""
+                else:
+                    world = self._scene.scene.camera.unproject(
+                        event.x, event.y, depth, self._scene.frame.width,
+                        self._scene.frame.height)
+                    text = "({:.3f}, {:.3f}, {:.3f})".format(
+                        world[0], world[1], world[2])
+
+                # This is not called on the main thread, so we need to
+                # post to the main thread to safely access UI items.
+                def update_label():
+                    print(text)
+                    self.info.text = text
+                    self.info.visible = (text != "")
+                    # We are sizing the info label to be exactly the right size,
+                    # so since the text likely changed width, we need to
+                    # re-layout to set the new frame.
+                    self.window.set_needs_layout()
+
+                gui.Application.instance.post_to_main_thread(
+                    self.window, update_label)
+
+            self._scene.scene.scene.render_to_depth_image(depth_callback)
+            return gui.Widget.EventCallbackResult.HANDLED
+        return gui.Widget.EventCallbackResult.IGNORED
+
     def my_load(self, geometry=None, first_time=False):
         if not self.only_UI:
             self._scene.scene.clear_geometry()
@@ -466,6 +532,31 @@ class AppWindow:
                 bounds = geometry.get_axis_aligned_bounding_box()
                 self._scene.setup_camera(60, bounds, bounds.get_center())
 
+    def make_point_cloud(self, npts, center, radius):
+        pts = np.random.uniform(-radius, radius, size=[npts, 3]) + center
+        cloud = o3d.geometry.PointCloud()
+        cloud.points = o3d.utility.Vector3dVector(pts)
+        colors = np.random.uniform(0.0, 1.0, size=[npts, 3])
+        cloud.colors = o3d.utility.Vector3dVector(colors)
+        return cloud
+
+    def mark_iot(self):
+        # points = self.make_point_cloud(100, (0, 0, 0), 1.0)
+        # w = self.window
+        # widget3d = self._scene
+        # mat = rendering.MaterialRecord()
+        # mat.shader = "defaultUnlit"
+        # mat.point_size = 5 * w.scaling
+        # widget3d.scene.add_geometry("Points", points, mat)
+        # for idx in range(0, 5):
+        #     widget3d.add_3d_label(points.points[idx], "{}".format(idx))
+        # bbox = widget3d.scene.bounding_box
+        # widget3d.setup_camera(60.0, bbox, bbox.get_center())
+        # print("sdafidsuhafiu")
+        self.my_laaabl = self._scene.add_3d_label(np.array([3.876, 1.756, 2.844]), "{}".format(1))
+        # my_label =gui.Label3D("sdsdfawefasdf", np.array([3.876, 1.756, 2.844]))
+        # self._scene.add_child(my_label)
+
 
 def main():
     only_UI = False
@@ -477,7 +568,7 @@ def main():
         width = 400
         height = 550
     w = AppWindow(width, height, only_UI=only_UI)
-    sensors = [0] * 11
+    sensors = [1] * 11
     if not only_UI:
         geo = render_home(sensors)
         w.my_load(geometry=geo, first_time=True)
