@@ -1,4 +1,4 @@
-from backend import render_home, remove_ceiling
+from backend import render_home, remove_ceiling, closest_node
 from settings import *
 from simulate import sim_in_unity
 from controller import *
@@ -8,9 +8,22 @@ import time
 
 MAX_NUM_BUTTONS = 20
 
+NUM_IOTS = 11
+
 
 class AppWindow:
-    def __init__(self, width, height, only_UI=False):
+    def __init__(self, width, height, only_UI=False, sensors=None):
+        self.iot_pos = [[3.8786, 1.2500, -4.2092],
+                        [-4.1498, 1.2500, -6.2607],
+                        [-1.0831, 1.2500, -12.8629],
+                        [-3.8101, 1.2500, 1.1884],
+                        [2.8155, 1.2500, 3.8129],
+                        [3.5415, 1.2500, -0.4654],
+                        [-1.9514, 1.2500, -10.4198],
+                        [-2.4120, 1.2500, 1.0357],
+                        [-1.5379, 1.2500, -14.3466],
+                        [3, 1.2500, 7],
+                        [1.1244, 1.2500, 7]]
         self.only_UI = only_UI
         self.settings = Settings()
         self.width = width
@@ -21,11 +34,8 @@ class AppWindow:
             self._scene = gui.SceneWidget()
             self._scene.scene = rendering.Open3DScene(self.window.renderer)
             self.mark_iot()
-            self._scene.set_on_mouse(self._on_mouse__scene)
+            self._scene.set_on_mouse(self._on_mouse_click_scene)
         em = self.window.theme.font_size
-        self.info = gui.Label("")
-        self.info.visible = False
-        self.window.add_child(self.info)
         self.separation_height = int(round(0.5 * em))
         self.separation_height_small = int(round(0.1 * em))
         self.separation_height_big = int(round(3 * em))
@@ -39,13 +49,17 @@ class AppWindow:
         self.all_button_labels = []
         self.all_button_and_or = []
         self.all_button_h_layout = []
-        self.all_iots = []
+        if not self.only_UI:
+            self.all_iots = sensors
+        else:
+            self.all_iots = []
         self.curr_button = None
         self.test_button = None
         self.initialize_all_buttons()
 
         # Add all collapsable
-        self.add_iots()
+        if self.only_UI:
+            self.add_iots()
         self.add_configs()
         self.add_controls()
 
@@ -143,6 +157,7 @@ class AppWindow:
 
         ## Show axes
         self._show_axes = gui.Checkbox("Show axes")
+        # self._show_axes.checked = True
         self._show_axes.set_on_checked(self._on_show_axes)
 
         ## Remove ceiling
@@ -203,7 +218,7 @@ class AppWindow:
                 break
         # if latest_label == "When" or latest_label == "If" or latest_label == "And"
         # or latest_label == "Or" or latest_label == "Else":
-        self.add_a_button("Do", True, latest_index_reverse, toggle_visile=False)
+        self.add_a_button("Do", latest_index_reverse, toggle_visile=False)
         # else:  # latest_label == "Do":
         #     print("Not available!")
 
@@ -306,8 +321,11 @@ class AppWindow:
 
     def get_iot_states(self):
         iot_states = []
-        for iot in self.all_iots:
-            iot_states.append(int(iot.is_on))
+        if not self.only_UI:
+            iot_states = self.all_iots
+        else:
+            for iot in self.all_iots:
+                iot_states.append(int(iot.is_on))
         return iot_states
 
     def create_on_select_function(*args, **kwargs):
@@ -359,7 +377,7 @@ class AppWindow:
             if self.curr_button:
                 curr_button_idx = self.all_buttons.index(self.curr_button)
                 self.curr_button.text, self.all_button_states[curr_button_idx] = self.get_on_off_state_message(
-                    switch_name, self.all_iots[switch_index].is_on, curr_button_idx)
+                    self.all_iots[switch_index].is_on, curr_button_idx, switch_index)
                 self.curr_button.is_on = False  # to change the color of the button
                 self.curr_button = None
             if self.test_button.is_on:  # we are in the testing mode
@@ -367,31 +385,57 @@ class AppWindow:
                 trigger = str(iot_states[switch_index]) + " " + str(switch_index)
                 new_states = self.controller.check_udpate(trigger, iot_states)
                 if new_states:
-                    geo = render_home(iot_states)
+                    geo = render_home(new_states)
                     self.my_load(geometry=geo)
                     for j in range(len(iot_states)):
                         # update the toggle
-                        self.all_iots[j].is_on = bool(iot_states[j])
+                        self.all_iots[j].is_on = bool(new_states[j])
 
         return function_template
 
-    def get_on_off_state_message(self, msg, is_on, curr_button_idx):
+    def on_switch_3d(self, switch_index):
+        self.all_iots[switch_index] = 1 - self.all_iots[switch_index]  # toggle the value
+        print(self.all_iots)
+        geo = render_home(self.all_iots)
+        self.my_load(geometry=geo)
+        if self.curr_button:
+            curr_button_idx = self.all_buttons.index(self.curr_button)
+            self.curr_button.text, self.all_button_states[curr_button_idx] = self.get_on_off_state_message(
+                self.all_iots[switch_index], curr_button_idx, switch_index, is_3d_switch=True)
+            self.curr_button.is_on = False  # to change the color of the button
+            self.curr_button = None
+        if self.test_button.is_on:  # we are in the testing mode
+            # time.sleep(2) # sleep doesn't really work...it's still gonna wait until the function is done...
+            trigger = str(self.all_iots[switch_index]) + " " + str(switch_index)
+            new_states = self.controller.check_udpate(trigger, self.all_iots)
+            if new_states:
+                geo = render_home(new_states)
+                self.my_load(geometry=geo)
+                self.all_iots = new_states
+
+    def get_on_off_state_message(self, is_on, curr_button_idx, curr_iot_idx, is_3d_switch=False):
         # "state_info" the 1st digit is on/off, the second digit is the index,
         # in the order of 5 lights, 3 doors, 3 lamps
         curr_button_is_action = self.all_button_labels[curr_button_idx].text == "Do"
-        if msg.startswith('L'):
-            state_info = str(int(is_on)) + " " + msg[1]
+        if is_3d_switch:
+            is_on = bool(is_on)
+        if curr_iot_idx <= 4:  # lights
+            state_info = str(int(is_on)) + " " + str(curr_iot_idx)
             if not curr_button_is_action:
-                msg = "Light " + msg[1] + " is on" if is_on else "Light " + msg[1] + " is off"
+                msg = "Light " + str(curr_iot_idx) + " is on" if is_on else "Light " + str(
+                    curr_iot_idx) + " is off"
             else:
-                msg = "Turn on the light " + msg[1] if is_on else "Turn off the light " + msg[1]
+                msg = "Turn on the light " + str(curr_iot_idx) if is_on else "Turn off the light " + str(
+                    curr_iot_idx)
 
-        elif msg.startswith("D"):
-            state_info = str(int(is_on)) + " " + str(int(msg[1]) + 5)  # TODO: change this 5 to len(lights)
-            if not curr_button_is_action:
-                msg = "Door " + msg[1] + " is open" if is_on else "Door " + msg[1] + " is closed"
+        elif curr_iot_idx <= 7:  # doors
+            state_info = str(int(is_on)) + " " + str(curr_iot_idx)
+            if not curr_button_is_action:  # TODO: change this 5 to len(lights)
+                msg = "Door " + str(curr_iot_idx - 5) + " is open" if is_on else "Door " + str(
+                    curr_iot_idx - 5) + " is closed"
             else:
-                msg = "Open the door " + msg[1] if is_on else "Close the door " + msg[1]
+                msg = "Open the door " + str(curr_iot_idx - 5) if is_on else "Close the door " + str(
+                    curr_iot_idx - 5)
 
         else:  # if startswith "T"
             # if msg == "T0":
@@ -404,11 +448,13 @@ class AppWindow:
             #         msg = "The curtains are open" if is_on else "The curtains are closed"
             #     else:
             #         msg = "Open the curtains" if is_on else "Close the curtains"
-            state_info = str(int(is_on)) + " " + str(int(msg[1]) + 8)  # TODO: change this 8 to len(lights) + len(doors)
+            state_info = str(int(is_on)) + " " + str(curr_button_idx)  # TODO: change this 8 to len(lights) + len(doors)
             if not curr_button_is_action:
-                msg = "Lamp " + msg[1] + " is on" if is_on else "Lamp " + msg[1] + " is off"
+                msg = "Lamp " + str(curr_button_idx - 8) + " is on" if is_on else "Lamp " + str(
+                    curr_button_idx - 8) + " is off"
             else:
-                msg = "Turn on the lamp " + msg[1] if is_on else "Turn off the lamp " + msg[1]
+                msg = "Turn on the lamp " + str(curr_button_idx - 8) if is_on else "Turn off the lamp " + str(
+                    curr_button_idx - 8)
         return msg, state_info
 
     # def get_state_from_message(self, msg):
@@ -418,13 +464,9 @@ class AppWindow:
 
     def _on_apply_layout(self):
         self.window.set_on_layout(self._on_layout)
-        self.window.add_child(self._scene)
+        if not self.only_UI:
+            self.window.add_child(self._scene)
         self.window.add_child(self.panel)
-
-    # def my_on_apply_layout(self):
-    #     # self._scene.remove_3d_label(self.my_laaabl)
-    #     self.window.add_child(self.panel)
-    #     print("sdadf")
 
     def _apply_settings(self):
         if not self.only_UI:
@@ -450,10 +492,6 @@ class AppWindow:
         self.panel.frame = gui.Rect(r.get_right() - width, r.y, width,
                                     height)
 
-        # for the self.info label
-        pref = self.info.calc_preferred_size(layout_context, gui.Widget.Constraints())
-        self.info.frame = gui.Rect(r.x, r.get_bottom() - pref.height, pref.width, pref.height)
-
     def _set_mouse_mode_fly(self):
         self._scene.set_view_controls(gui.SceneWidget.Controls.FLY)
 
@@ -461,7 +499,7 @@ class AppWindow:
         self._scene.set_view_controls(gui.SceneWidget.Controls.ROTATE_MODEL)
 
     def _on_show_axes(self, show):
-        self.settings.show_axes = show
+        self.settings.show_axes = self._show_axes.checked
         self._apply_settings()
 
     def _on_point_size(self, size):
@@ -472,49 +510,63 @@ class AppWindow:
     def _on_remove_ceiling(self, is_on):
         self.my_load()
 
-    def _on_mouse__scene(self, event):
-        # We could override BUTTON_DOWN without a modifier, but that would
-        # interfere with manipulating the scene.
-        if event.type == gui.MouseEvent.Type.BUTTON_DOWN and event.is_modifier_down(
+    def _on_mouse_click_scene(self, event):
+        if event.type == gui.MouseEvent.Type.BUTTON_DOWN  and event.is_modifier_down(
                 gui.KeyModifier.CTRL):
-
             def depth_callback(depth_image):
-                # Coordinates are expressed in absolute coordinates of the
-                # window, but to dereference the image correctly we need them
-                # relative to the origin of the widget. Note that even if the
-                # scene widget is the only thing in the window, if a menubar
-                # exists it also takes up space in the window (except on macOS).
                 x = event.x - self._scene.frame.x
                 y = event.y - self._scene.frame.y
-                # Note that np.asarray() reverses the axes.
-                depth = np.asarray(depth_image)[y, x]
-
-                if depth == 1.0:  # clicked on nothing (i.e. the far plane)
-                    text = ""
-                else:
+                depth = np.asarray(depth_image)[y, x]  # Note that np.asarray() reverses the axes.
+                world = None
+                if depth != 1.0:  # clicked on nothing (i.e. the far plane)
                     world = self._scene.scene.camera.unproject(
-                        event.x, event.y, depth, self._scene.frame.width,
+                        x, (self._scene.frame.height - y), depth, self._scene.frame.width,
                         self._scene.frame.height)
-                    text = "({:.3f}, {:.3f}, {:.3f})".format(
-                        world[0], world[1], world[2])
-
-                # This is not called on the main thread, so we need to
-                # post to the main thread to safely access UI items.
-                def update_label():
-                    print(text)
-                    self.info.text = text
-                    self.info.visible = (text != "")
-                    # We are sizing the info label to be exactly the right size,
-                    # so since the text likely changed width, we need to
-                    # re-layout to set the new frame.
-                    self.window.set_needs_layout()
-
-                gui.Application.instance.post_to_main_thread(
-                    self.window, update_label)
+                if world is not None:
+                    iot_idx = closest_node([world[0], world[1], world[2]], self.iot_pos)
+                    print(iot_idx)
+                    self.on_switch_3d(iot_idx)
 
             self._scene.scene.scene.render_to_depth_image(depth_callback)
-            return gui.Widget.EventCallbackResult.HANDLED
+            return gui.Widget.EventCallbackResult.IGNORED
         return gui.Widget.EventCallbackResult.IGNORED
+
+    # def _on_mouse_click_scene(self, event):
+    #     if event.type == gui.MouseEvent.Type.BUTTON_DOWN  and event.is_modifier_down(
+    #             gui.KeyModifier.CTRL):
+    #         def depth_callback():
+    #             x = event.x - self._scene.frame.x
+    #             y = event.y - self._scene.frame.y
+    #             depth = self.depth  # Note that np.asarray() reverses the axes.
+    #             world = None
+    #             if depth != 1.0:  # clicked on nothing (i.e. the far plane)
+    #                 world = self._scene.scene.camera.unproject(
+    #                     x, (self._scene.frame.height - y), depth, self._scene.frame.width,
+    #                     self._scene.frame.height)
+    #             if world is not None:
+    #                 iot_idx = closest_node([world[0], world[1], world[2]], self.iot_pos)
+    #                 label = self._scene.add_3d_label(np.array([world[0], world[1], world[2]]), "my click")
+    #                 label.color = gui.Color(1.0, 0.0, 0.0)
+    #                 # print(iot_idx)
+    #                 print("here1_inside")
+    #                 self.on_switch_3d(iot_idx)
+    #
+    #         depth_callback()
+    #         print("here1")
+    #         return gui.Widget.EventCallbackResult.HANDLED
+    #
+    #     elif event.type == gui.MouseEvent.Type.BUTTON_DOWN:
+    #         def depth_callback_ss(depth_image):
+    #             x = event.x - self._scene.frame.x
+    #             y = event.y - self._scene.frame.y
+    #             depth = np.asarray(depth_image)[y, x]  # Note that np.asarray() reverses the axes.
+    #             self.depth = depth
+    #
+    #         kkk = self._scene.scene.scene.render_to_depth_image(depth_callback_ss)
+    #         print("here2")
+    #         print(kkk)
+    #         return gui.Widget.EventCallbackResult.HANDLED
+    #     return gui.Widget.EventCallbackResult.IGNORED
 
     def my_load(self, geometry=None, first_time=False):
         if not self.only_UI:
@@ -553,13 +605,32 @@ class AppWindow:
         # bbox = widget3d.scene.bounding_box
         # widget3d.setup_camera(60.0, bbox, bbox.get_center())
         # print("sdafidsuhafiu")
-        self.my_laaabl = self._scene.add_3d_label(np.array([3.876, 1.756, 2.844]), "{}".format(1))
-        # my_label =gui.Label3D("sdsdfawefasdf", np.array([3.876, 1.756, 2.844]))
-        # self._scene.add_child(my_label)
+        # points = [[3.873, 1.918, -3.8],
+        #           [2.897, 7.159, 0.297],
+        #           ]
+        #
+        for i in range(len(self.iot_pos)):
+            if i <= 4:  # lights
+                color = gui.Color(1.0, 1.0, 1.0)
+                text = "Light " + str(i)
+            elif i <= 7:  # doors
+                color = gui.Color(1.0, 0.0, 0.0)
+                # color = gui.Color(196/256, 140/256, 99/256)
+                text = "Door " + str(i - 5)
+            else:
+                color = gui.Color(1.0, 1.0, 0.0)
+                text = "Lamp " + str(i - 8)
+
+            # x, y, z axis will be rendered as red, green, and blue
+            label = self._scene.add_3d_label(np.array(self.iot_pos[i]), text)
+            label.color = color
+            # my_label =gui.Label3D("sdsdfawefasdf", np.array([3.876, 1.756, 2.844]))
+            # self._scene.add_child(my_label)
 
 
 def main():
     only_UI = False
+    sensors = [0] * NUM_IOTS
     gui.Application.instance.initialize()
     if not only_UI:
         width = 1024
@@ -567,8 +638,8 @@ def main():
     else:
         width = 400
         height = 550
-    w = AppWindow(width, height, only_UI=only_UI)
-    sensors = [1] * 11
+
+    w = AppWindow(width, height, only_UI=only_UI, sensors=sensors)
     if not only_UI:
         geo = render_home(sensors)
         w.my_load(geometry=geo, first_time=True)

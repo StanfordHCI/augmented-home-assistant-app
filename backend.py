@@ -16,6 +16,7 @@ class Model(torch.nn.Module):
         output = self.linear(input)
         return output
 
+
 vector_dims = 2
 dataset_name = "models"
 train_data = torch.load(dataset_name + '/dec-27-train.pth')
@@ -39,6 +40,12 @@ def remove_ceiling(pcloud):
     return pcloud.crop(no_ceiling)
 
 
+def closest_node(node, nodes):
+    nodes = np.asarray(nodes)
+    dist_2 = np.sum((nodes - node) ** 2, axis=1)
+    return np.argmin(dist_2)
+
+
 def render_home(sensors):
     sensors = torch.tensor(sensors, dtype=torch.float32)
     pred_vecs = model(sensors).detach().numpy().reshape(-1, 2)
@@ -53,3 +60,19 @@ def render_home(sensors):
     print(assemble_end - assemble_start)
     # return remove_ceiling(pcd_combined)
     return pcd_combined
+
+# if __name__ == '__main__':
+# nodes =  [[3.8786, 1.2500, -4.2092],
+#                     [-4.1498, 1.2500, -6.2607],
+#                     [-1.0831, 1.2500, -12.8629],
+#                     [-3.8101, 1.2500, 1.1884],
+#                     [2.8155, 1.2500, 3.8129],
+#                     [3.5415, 1.2500, -0.4654],
+#                     [-1.9514, 1.2500, -10.4198],
+#                     [-2.4120, 1.2500, 1.0357],
+#                     [-1.5379, 1.2500, -14.3466],
+#                     [3, 1.2500, 7],
+#                     [1.1244, 1.2500, 7]]
+#
+# node = [2.8155, 1.2500, 3.8129]
+# print(closest_node(node, nodes))
