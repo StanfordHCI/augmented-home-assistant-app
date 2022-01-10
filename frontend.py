@@ -212,7 +212,7 @@ class AppWindow:
         elif latest_label == "Or":
             self.add_a_button("Or", latest_index_reverse, toggle_visile=True)
         elif latest_label == "Do":
-            self.add_a_button("Else", latest_index_reverse)
+            self.add_a_button("Else", latest_index_reverse,  toggle_visile=False)
         else:
             print("Not available!")
 
@@ -238,7 +238,7 @@ class AppWindow:
             self.test_button.text = "Test"
 
     def on_deploy(self):
-        sim_in_unity(1, self.get_test_deploy_data())
+        sim_in_unity(2, self.get_test_deploy_data())
 
     def get_test_deploy_data(self):
         all_shown_labels = [label.text for label in self.all_button_labels if label.visible]
@@ -424,7 +424,8 @@ class AppWindow:
     def get_on_off_state_message(self, is_on, curr_button_idx, curr_iot_idx, is_3d_switch=False):
         # "state_info" the 1st digit is on/off, the second digit is the index,
         # in the order of 5 lights, 3 doors, 3 lamps
-        curr_button_is_action = self.all_button_labels[curr_button_idx].text == "Do"
+        cuur_text =  self.all_button_labels[curr_button_idx].text
+        curr_button_is_action = cuur_text == "Do" or cuur_text == "Else"
         if is_3d_switch:
             is_on = bool(is_on)
         if curr_iot_idx <= 4:  # lights
@@ -633,7 +634,7 @@ class AppWindow:
 
 def main():
     only_UI = False
-    sensors = [0] * NUM_IOTS
+    sensors = [1] * NUM_IOTS
     gui.Application.instance.initialize()
     if not only_UI:
         width = 1024
