@@ -1,0 +1,5 @@
+numpy==1.22.0
+open3d~=0.14.1
+torch~=1.10.0
+requests==2.27.1
+opencv-python~=4.5.5.62
