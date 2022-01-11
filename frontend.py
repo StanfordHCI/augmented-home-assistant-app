@@ -375,18 +375,10 @@ class AppWindow:
                 and_or_toggle.visible = True
             select_label.visible = True
             h_layout.visible = True
-            on_trigger.visible = True
-            off_trigger.visible = True
+            on_trigger.visible = False
+            off_trigger.visible = False
 
             # adjust the padding if it's door to avoid weird issue:
-
-            if latest_index_reverse < len(self.all_button_states):
-                pre_iot_id = int(self.all_button_states[::-1][latest_index_reverse][2])
-                if 5 <= pre_iot_id <= 7:
-                    pre_on_trigger = self.all_button_on_off_trigger[::-1][latest_index_reverse][0]
-                    pre_off_trigger = self.all_button_on_off_trigger[::-1][latest_index_reverse][1]
-                    pre_on_trigger.horizontal_padding_em = 2.5
-                    pre_off_trigger.horizontal_padding_em = 2.3
 
             self.window.add_child(self.panel)  # this will update the layout
 
@@ -528,6 +520,9 @@ class AppWindow:
                 button_index, iot_id, is_3d_switch=True)
             curr_button.is_on = False  # to change the color of the button
 
+            on_trigger.visible = False
+            off_trigger.visible = False
+
             if button_index == 0:  ### the "When" switch
                 self.combo.clear_items()
                 self.all_combo_items_id = []
@@ -594,6 +589,8 @@ class AppWindow:
             iot_id = int(self.all_button_states[curr_button_idx][2])
             cuur_text = self.all_button_labels[curr_button_idx].text
             curr_button_is_action = cuur_text == "Do" or cuur_text == "Else"
+            on_trigger.visible = True
+            off_trigger.visible = True
             # if light, self.all_button_states[button_index] is in the form of "state id"
             if iot_id <= 4:
                 on_trigger.text = "On"
@@ -602,23 +599,17 @@ class AppWindow:
                 if curr_button_is_action:
                     on_trigger.text = "Open"
                     off_trigger.text = "Close"
+                    on_trigger.horizontal_padding_em = 2.5
+                    off_trigger.horizontal_padding_em = 2.5
                 else:
                     on_trigger.text = "Open"
                     off_trigger.text = "Closed"
+                    on_trigger.horizontal_padding_em = 2.5
+                    off_trigger.horizontal_padding_em = 2.3
             else:
                 on_trigger.text = "On"
                 off_trigger.text = "Off"
-
-            # if curr_button_idx == 0:  ### the "When" switch
-            #     self.combo.clear_items()
-            #     self.all_combo_items_id = []
-            #     fake_time = 10
-            #     for i in range(1, len(self.all_history_changed_idx)):  # the first item is "initial" not useful
-            #         if self.all_history_changed_idx[i] == self.all_button_states[curr_button_idx]:
-            #             self.combo.add_item("01/01/2022 20:{} AM".format(fake_time + i * 2))
-            #             self.all_combo_items_id.append(i)
-            #     if len(self.all_combo_items_id) >= 1:
-            #         self.all_combo_current_item_id = self.all_combo_items_id[0]  # selecting the first one by default
+            self.window.add_child(self.panel)  # this will update the layout
 
     def on_switch_3d(self, switch_index):
         self.all_iots[switch_index] = 1 - self.all_iots[switch_index]  # toggle the value
@@ -846,7 +837,7 @@ class AppWindow:
                         self._scene.frame.height)
                 if world is not None:
                     iot_idx = closest_node([world[0], world[1], world[2]], self.iot_pos)
-                    print(iot_idx)
+                    # print(iot_idx)
                     self.on_switch_3d(iot_idx)
 
             self._scene.scene.scene.render_to_depth_image(depth_callback)
@@ -854,7 +845,7 @@ class AppWindow:
         # return gui.Widget.EventCallbackResult.IGNORED
 
         elif event.type == gui.MouseEvent.Type.BUTTON_DOWN:  # open
-            print("On")
+            # print("On")
 
             def depth_callback(depth_image):
                 x = event.x - self._scene.frame.x
@@ -867,7 +858,7 @@ class AppWindow:
                         self._scene.frame.height)
                 if world is not None:
                     iot_idx = closest_node([world[0], world[1], world[2]], self.iot_pos)
-                    print(iot_idx)
+                    # print(iot_idx)
                     self.on_switch_3d_know_states(iot_idx)
 
             self._scene.scene.scene.render_to_depth_image(depth_callback)
