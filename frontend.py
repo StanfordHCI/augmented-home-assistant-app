@@ -485,6 +485,25 @@ class AppWindow:
 
         return function_template
 
+    def on_switch_3d_know_states(self, switch_index, is_on):
+        if self.curr_button:
+            curr_button_idx = self.all_buttons.index(self.curr_button)
+            self.curr_button.text, self.all_button_states[curr_button_idx] = self.get_on_off_state_message(
+                int(is_on), curr_button_idx, switch_index, is_3d_switch=True)
+            self.curr_button.is_on = False  # to change the color of the button
+            self.curr_button = None
+
+            if curr_button_idx == 0:  ### the "When" switch
+                self.combo.clear_items()
+                self.all_combo_items_id = []
+                fake_time = 10
+                for i in range(1, len(self.all_history_changed_idx)):  # the first item is "initial" not useful
+                    if self.all_history_changed_idx[i] == self.all_button_states[curr_button_idx]:
+                        self.combo.add_item("01/01/2022 20:{} AM".format(fake_time + i * 2))
+                        self.all_combo_items_id.append(i)
+                if len(self.all_combo_items_id) >= 1:
+                    self.all_combo_current_item_id = self.all_combo_items_id[0]  # selecting the first one by default
+
     def on_switch_3d(self, switch_index):
         self.all_iots[switch_index] = 1 - self.all_iots[switch_index]  # toggle the value
         print(self.all_iots)
@@ -621,7 +640,27 @@ class AppWindow:
                 self.remove_iot_3d_labels()
 
     def _on_mouse_click_scene(self, event):
+
         if event.type == gui.MouseEvent.Type.BUTTON_DOWN and event.is_modifier_down(
+                gui.KeyModifier.SHIFT):
+            print("Off")
+            def depth_callback(depth_image):
+                x = event.x - self._scene.frame.x
+                y = event.y - self._scene.frame.y
+                depth = np.asarray(depth_image)[y, x]  # Note that np.asarray() reverses the axes.
+                world = None
+                if depth != 1.0:  # clicked on nothing (i.e. the far plane)
+                    world = self._scene.scene.camera.unproject(
+                        x, (self._scene.frame.height - y), depth, self._scene.frame.width,
+                        self._scene.frame.height)
+                if world is not None:
+                    iot_idx = closest_node([world[0], world[1], world[2]], self.iot_pos)
+                    print(iot_idx)
+                    self.on_switch_3d_know_states(iot_idx, False)
+            self._scene.scene.scene.render_to_depth_image(depth_callback)
+            return gui.Widget.EventCallbackResult.IGNORED
+
+        elif event.type == gui.MouseEvent.Type.BUTTON_DOWN and event.is_modifier_down(
                 gui.KeyModifier.CTRL):
             def depth_callback(depth_image):
                 x = event.x - self._scene.frame.x
@@ -637,6 +676,24 @@ class AppWindow:
                     print(iot_idx)
                     self.on_switch_3d(iot_idx)
 
+            self._scene.scene.scene.render_to_depth_image(depth_callback)
+            return gui.Widget.EventCallbackResult.IGNORED
+
+        elif event.type == gui.MouseEvent.Type.BUTTON_DOWN: # open
+            print("On")
+            def depth_callback(depth_image):
+                x = event.x - self._scene.frame.x
+                y = event.y - self._scene.frame.y
+                depth = np.asarray(depth_image)[y, x]  # Note that np.asarray() reverses the axes.
+                world = None
+                if depth != 1.0:  # clicked on nothing (i.e. the far plane)
+                    world = self._scene.scene.camera.unproject(
+                        x, (self._scene.frame.height - y), depth, self._scene.frame.width,
+                        self._scene.frame.height)
+                if world is not None:
+                    iot_idx = closest_node([world[0], world[1], world[2]], self.iot_pos)
+                    print(iot_idx)
+                    self.on_switch_3d_know_states(iot_idx, True)
             self._scene.scene.scene.render_to_depth_image(depth_callback)
             return gui.Widget.EventCallbackResult.IGNORED
         return gui.Widget.EventCallbackResult.IGNORED
