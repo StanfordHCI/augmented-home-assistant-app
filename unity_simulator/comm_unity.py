@@ -161,6 +161,37 @@ class UnityCommunication(object):
              })
         return response['success']
 
+    def experiment_log(self, message):
+        """
+        Log message in unity console
+        :param message: the message to log
+        :return: success
+        """
+        response = self.post_command(
+            {
+                'id': str(time.time()),
+                'action': 'experiment_log',
+                'stringParams': [
+                    message
+                ]
+            }
+        )
+        return response['success']
+
+    def setup_experiment_log(self):
+        """
+        Clear existing log and setup experiment log
+        :return: success
+        """
+        response = self.post_command(
+            {
+                'id': str(time.time()),
+                'action': 'setup_experiment_log',
+                'stringParams': []
+            }
+        )
+        return response['success']
+
     def check(self, script_lines):
         response = self.post_command({'id': str(time.time()), 'action': 'check_script', 'stringParams': script_lines})
         return response['success'], response['message']
