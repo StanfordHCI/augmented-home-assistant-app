@@ -5,10 +5,11 @@ from controller import *
 import numpy as np
 import open3d as o3d
 import time
+import random
 
 MAX_NUM_BUTTONS = 20
-
 NUM_IOTS = 11
+SCRIPT_IDX = 0
 
 
 class AppWindow:
@@ -39,7 +40,8 @@ class AppWindow:
         self.separation_height_small = int(round(0.1 * em))
         self.separation_height_big = int(round(3 * em))
         self.panel = gui.Vert(0, gui.Margins(0.25 * em, 0.25 * em, 1 * em, 0.25 * em))
-        self.config = gui.CollapsableVert("Configuration", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        self.history = gui.CollapsableVert("History", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        self.config = gui.CollapsableVert("Automation", 0.25 * em, gui.Margins(em, 0, 0, 0))
         self.program_layout = gui.Vert()
 
         # Local button list
@@ -49,6 +51,9 @@ class AppWindow:
         self.all_button_and_or = []
         self.all_button_h_layout = []
         self.all_3d_labels = []
+        self.all_combo_items_id = None
+        self.all_combo_current_item_id = None
+        self.all_histories, self.all_history_changed_idx = sim_in_unity(SCRIPT_IDX, [], get_all_history=True)
 
         if not self.only_UI:
             self.all_iots = sensors
@@ -61,6 +66,8 @@ class AppWindow:
         # Add all collapsable
         if self.only_UI:
             self.add_iots()
+        else:
+            self.add_history()
         self.add_configs()
         self.add_controls()
 
@@ -70,6 +77,46 @@ class AppWindow:
 
         # Initialize controller
         self.controller = Controller()
+
+    def add_history(self):
+        em = self.window.theme.font_size
+        self.combo = gui.Combobox()
+        fake_time = 10
+        for i in range(len(self.all_histories)):
+            self.combo.add_item("01/01/2022 20:{} AM".format(fake_time + i * 2))
+            # self.all_combo_items.append(self.all_histories[i])
+            # fake_time += random.randint(1, 3)
+        # History combobox
+        # combo.add_item("01/01/2022 8:12 AM")
+        # combo.add_item("01/01/2022 8:15 AM")
+        self.combo.set_on_selection_changed(self.on_combo)
+
+        # Content switcher
+        before_trigger = gui.Button("Before Trigger")
+        before_trigger.horizontal_padding_em = 0.91
+        before_trigger.vertical_padding_em = 0.1
+        before_trigger.set_on_clicked(self.on_content_switch_before)
+
+        after_trigger = gui.Button("After Trigger")
+        after_trigger.horizontal_padding_em = 0.91
+        after_trigger.vertical_padding_em = 0.1
+        after_trigger.set_on_clicked(self.on_content_switch_after)
+
+        after_auto = gui.Button("After Automation")
+        after_auto.vertical_padding_em = 0.25
+        after_auto.set_on_clicked(self.on_content_switch_auto)
+
+        h = gui.Horiz(0.1 * em)  # row 1
+        h.add_child(before_trigger)
+        h.add_stretch()
+        h.add_child(after_trigger)
+
+        self.history.add_child(self.combo)
+        self.history.add_fixed(self.separation_height_small)
+        self.history.add_child(h)
+        self.history.add_child(after_auto)
+        self.history.add_fixed(self.separation_height)
+        self.panel.add_child(self.history)
 
     def add_iots(self):
         em = self.window.theme.font_size
@@ -119,6 +166,7 @@ class AppWindow:
         clear_button = gui.Button("Clear")
         test_button = gui.Button("Test")
         test_button.toggleable = True
+        test_button.visible = False
         deploy_button = gui.Button("Deploy")
         condition_button.set_on_clicked(self.on_condition)
         action_button.set_on_clicked(self.on_action)
@@ -197,6 +245,42 @@ class AppWindow:
         self.panel.add_fixed(self.separation_height)
         self.panel.add_child(view_ctrls)
 
+    def on_content_switch_after(self):
+        print("on_content_switch called")
+        # if self.all_combo_current_item_id + 1 < len(self.all_histories):
+        iot_states = self.all_histories[self.all_combo_current_item_id]
+        print(iot_states)
+        geo = render_home(iot_states)
+        self.my_load(geometry=geo)
+
+    def on_content_switch_before(self):
+        print("on_content_switch before called")
+        if self.all_combo_current_item_id - 1 >= 0:
+            iot_states = self.all_histories[self.all_combo_current_item_id - 1]
+            print(iot_states)
+            geo = render_home(iot_states)
+            self.my_load(geometry=geo)
+
+    def on_content_switch_auto(self):
+        print("on_content_switch called")
+        # self.test_button.is_on = True
+        deploy_data = self.get_test_deploy_data()
+        self.controller.initialize(deploy_data)
+        correct_trigger = deploy_data[0]
+
+        # trigger = self.all_history_changed_idx[self.all_combo_current_item_id]
+        # use the correct_trigger to force it to render no matter what...
+        new_states = self.controller.check_udpate(correct_trigger, self.all_iots)
+        if new_states:
+            geo = render_home(new_states)
+            self.my_load(geometry=geo)
+            self.all_iots = new_states
+
+    def on_combo(self, new_val, new_idx):
+        print("combo called")
+        self.all_combo_current_item_id = self.all_combo_items_id[new_idx]
+        print(new_idx, new_val)
+
     def on_condition(self):
         reversed_all_buttons = self.all_buttons[::-1]
         latest_index_reverse = 0
@@ -212,7 +296,7 @@ class AppWindow:
         elif latest_label == "Or":
             self.add_a_button("Or", latest_index_reverse, toggle_visile=True)
         elif latest_label == "Do":
-            self.add_a_button("Else", latest_index_reverse,  toggle_visile=False)
+            self.add_a_button("Else", latest_index_reverse, toggle_visile=False)
         else:
             print("Not available!")
 
@@ -238,7 +322,7 @@ class AppWindow:
             self.test_button.text = "Test"
 
     def on_deploy(self):
-        sim_in_unity(2, self.get_test_deploy_data())
+        sim_in_unity(SCRIPT_IDX, self.get_test_deploy_data())
 
     def get_test_deploy_data(self):
         all_shown_labels = [label.text for label in self.all_button_labels if label.visible]
@@ -420,11 +504,20 @@ class AppWindow:
                 geo = render_home(new_states)
                 self.my_load(geometry=geo)
                 self.all_iots = new_states
+        if curr_button_idx == 0:  ### the "When" switch
+            self.combo.clear_items()
+            self.all_combo_items_id = []
+            fake_time = 10
+            for i in range(1, len(self.all_history_changed_idx)):  # the first item is "initial" not useful
+                if self.all_history_changed_idx[i] == self.all_button_states[curr_button_idx]:
+                    self.combo.add_item("01/01/2022 20:{} AM".format(fake_time + i * 2))
+                    self.all_combo_items_id.append(i)
+            self.all_combo_current_item_id = self.all_combo_items_id[0]  # selecting the first one by default
 
     def get_on_off_state_message(self, is_on, curr_button_idx, curr_iot_idx, is_3d_switch=False):
         # "state_info" the 1st digit is on/off, the second digit is the index,
         # in the order of 5 lights, 3 doors, 3 lamps
-        cuur_text =  self.all_button_labels[curr_button_idx].text
+        cuur_text = self.all_button_labels[curr_button_idx].text
         curr_button_is_action = cuur_text == "Do" or cuur_text == "Else"
         if is_3d_switch:
             is_on = bool(is_on)
@@ -634,7 +727,7 @@ class AppWindow:
 
 def main():
     only_UI = False
-    sensors = [1] * NUM_IOTS
+    sensors = [0] * NUM_IOTS
     gui.Application.instance.initialize()
     if not only_UI:
         width = 1024

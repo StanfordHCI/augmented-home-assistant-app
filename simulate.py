@@ -22,14 +22,20 @@ script_2 = [
     '<char0> [close] <door> (47)',
     '<char0> [sit] <bed> (394)']  # Add here your script
 
+# script_3 = [
+#     '<char0> [switchon] <tablelamp> (377)',
+#     '<char0> [open] <door> (47)',
+#     '<char0> [switchon] <light> (58)',
+#     '<char0> [open] <fridge> (163)',
+#     '<char0> [close] <fridge> (163)',
+#     '<char0> [switchoff] <light> (58)',
+#     '<char0> [sit] <bed> (394)']  # Add here your script
+
 script_3 = [
     '<char0> [switchon] <tablelamp> (377)',
     '<char0> [open] <door> (47)',
     '<char0> [switchon] <light> (58)',
-    '<char0> [open] <fridge> (163)',
-    '<char0> [close] <fridge> (163)',
-    '<char0> [switchoff] <light> (58)',
-    '<char0> [sit] <bed> (394)']  # Add here your script
+    '<char0> [open] <fridge> (163)']  # Add here your script
 
 # 5 lights, 3 doors, 3 lamps
 local_lookup_table = [58, 239, 278, 344, 402, 47, 254, 305, 256, 376, 377]
@@ -44,56 +50,60 @@ def find_nodes(graph, **kwargs):
 
 
 class Processor:
-    def __init__(self):
+    def __init__(self, get_all_history=False):
         # the order is, 5 lights, 3 doors, 2 tablelamp
         # self.states = [1] * 10
         # because the unity side door states are not accurate, so I have to keep a local copy
+        self.get_all_history = get_all_history
         self.local_states_table = [1] * 11
         self.excluded_list = [163, 172]  # 163 is fridge, 172 is microwave
 
     def initialize_graph(self):
-        comm.reset()
-        success, graph = comm.environment_graph()
-        tablelamp = find_nodes(graph, class_name='tablelamp')[0]
-        tablelamp['states'] = ['OFF']
-        tablelamp = find_nodes(graph, class_name='tablelamp')[1]
-        tablelamp['states'] = ['OFF']
-        lights = find_nodes(graph, class_name='lightswitch')
-        for l in lights:
-            l['states'] = ['OFF']
-        door = find_nodes(graph, class_name='door')[0]
-        door['states'] = ['CLOSED']
-        door2 = find_nodes(graph, class_name='door')[1]
-        door2['states'] = ['CLOSED']
-        l5 = find_nodes(graph, class_name='lightswitch')[4]
-        l5['states'] = ['ON']
         self.local_states_table = [0, 0, 0, 0, 1] + [0, 0, 1] + [0, 0, 1]
-        return graph
+        if not self.get_all_history:
+            comm.reset()
+            success, graph = comm.environment_graph()
+            tablelamp = find_nodes(graph, class_name='tablelamp')[0]
+            tablelamp['states'] = ['OFF']
+            tablelamp = find_nodes(graph, class_name='tablelamp')[1]
+            tablelamp['states'] = ['OFF']
+            lights = find_nodes(graph, class_name='lightswitch')
+            for l in lights:
+                l['states'] = ['OFF']
+            door = find_nodes(graph, class_name='door')[0]
+            door['states'] = ['CLOSED']
+            door2 = find_nodes(graph, class_name='door')[1]
+            door2['states'] = ['CLOSED']
+            l5 = find_nodes(graph, class_name='lightswitch')[4]
+            l5['states'] = ['ON']
+            return graph
 
     def initialize_graph_task_2(self):
-        comm.reset()
-        success, graph = comm.environment_graph()
-        tablelamps = find_nodes(graph, class_name='tablelamp')
-        for tablelamp in tablelamps:
-            tablelamp['states'] = ['OFF']
-        door = find_nodes(graph, class_name='door')[0]
-        door['states'] = ['CLOSED']
         self.local_states_table = [1] * 5 + [0, 1, 1] + [0] * 3
-        return graph
+        if not self.get_all_history:
+            comm.reset()
+            success, graph = comm.environment_graph()
+            tablelamps = find_nodes(graph, class_name='tablelamp')
+            for tablelamp in tablelamps:
+                tablelamp['states'] = ['OFF']
+            door = find_nodes(graph, class_name='door')[0]
+            door['states'] = ['CLOSED']
+            return graph
 
     def initialize_graph_task_3(self):
-        comm.reset()
-        success, graph = comm.environment_graph()
-        lights = find_nodes(graph, class_name='lightswitch')
-        for l in lights:
-            l['states'] = ['OFF']
-        tablelamps = find_nodes(graph, class_name='tablelamp')
-        for tablelamp in tablelamps:
-            tablelamp['states'] = ['OFF']
-        door = find_nodes(graph, class_name='door')[0]
-        door['states'] = ['CLOSED']
         self.local_states_table = [0] * 5 + [0, 1, 1] + [0, 0, 0]
-        return graph
+        if not self.get_all_history:
+            comm.reset()
+            success, graph = comm.environment_graph()
+            lights = find_nodes(graph, class_name='lightswitch')
+            for l in lights:
+                l['states'] = ['OFF']
+            tablelamps = find_nodes(graph, class_name='tablelamp')
+            for tablelamp in tablelamps:
+                tablelamp['states'] = ['OFF']
+            door = find_nodes(graph, class_name='door')[0]
+            door['states'] = ['CLOSED']
+            return graph
 
     def translate_from_state_to_action(self, msg):
         if msg == "":
@@ -221,6 +231,25 @@ class Processor:
             tablelamps[x]['states'] = ['ON'] if states[len(lights) + len(doors) + x] else ['OFF']
         _ = comm.expand_scene(graph)
 
+    def return_all_history(self, script):
+        all_history = [self.local_states_table.copy()]
+        all_history_changed_idx = ['initial']
+        for action in script:
+            obj_id = int(action[action.find("(") + 1:action.find(")")].lower())
+            action_match = action[action.find("[") + 1:action.find("]")].lower()
+            # if it's not "walk" and those non-iot actions
+            if action_match in ['switchon', 'switchoff', 'close', 'open'] and obj_id not in self.excluded_list:
+                action_state = 1 if action_match in ['switchon', 'open'] else 0
+
+                local_index = local_lookup_table.index(obj_id)
+                if self.local_states_table[local_index] == action_state:
+                    pass  # will ignore an action if the states already satisfied
+                else:
+                    self.local_states_table[local_index] = action_state
+                    all_history.append(self.local_states_table.copy())
+                    all_history_changed_idx.append(str(action_state) + " " + str(local_index))
+        return all_history, all_history_changed_idx
+
     def get_current_states(self):
         light_states = []
         door_states = []
@@ -249,28 +278,39 @@ class Processor:
         return light_states + door_states + tablelamp_states, graph
 
 
-def sim_in_unity(selected_task, input):
-    my_p = Processor()
-    # print(sim_in_unity)
+def sim_in_unity(selected_task, input, get_all_history=False):
+    my_p = Processor(get_all_history)
     print(input)
     if selected_task == 0:
         #### Task 1
-        graph = my_p.initialize_graph()
-        _ = comm.expand_scene(graph)
-        comm.add_character('Chars/Female1', initial_room="bedroom")
-        my_p.process_programm(script_1, input)
+        if get_all_history:
+            my_p.initialize_graph()
+            return my_p.return_all_history(script_1)
+        else:
+            graph = my_p.initialize_graph()
+            _ = comm.expand_scene(graph)
+            comm.add_character('Chars/Female1', initial_room="bedroom")
+            my_p.process_programm(script_1, input)
     elif selected_task == 1:
         #### Task 2
-        graph = my_p.initialize_graph_task_2()
-        _ = comm.expand_scene(graph)
-        comm.add_character('Chars/Female1', initial_room="bedroom")
-        my_p.process_programm(script_2, input)
+        if get_all_history:
+            my_p.initialize_graph_task_2()
+            return my_p.return_all_history(script_2)
+        else:
+            graph = my_p.initialize_graph_task_2()
+            _ = comm.expand_scene(graph)
+            comm.add_character('Chars/Female1', initial_room="bedroom")
+            my_p.process_programm(script_2, input)
     else:
         ##### Task 3
-        graph = my_p.initialize_graph_task_3()
-        _ = comm.expand_scene(graph)
-        comm.add_character('Chars/Female1', initial_room="bedroom")
-        my_p.process_programm(script_3, input)
+        if get_all_history:
+            my_p.initialize_graph_task_3()
+            return my_p.return_all_history(script_3)
+        else:
+            graph = my_p.initialize_graph_task_3()
+            _ = comm.expand_scene(graph)
+            comm.add_character('Chars/Female1', initial_room="bedroom")
+            my_p.process_programm(script_3, input)
 
 
 if __name__ == '__main__':
