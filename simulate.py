@@ -299,7 +299,7 @@ def enhanced_script_2(my_p: Processor):
     yield '!print One day:'
     time.sleep(1)
     yield '!print It\'s late now. I need to go to sleep...'
-    time.sleep(1)
+    # time.sleep(1)
     yield from [
         f'!print I\'ll turn on my bed side lamp ({local_lamp_name_table[2]}).',
         f'<char0> [walk] <door> (47)',
@@ -342,7 +342,7 @@ def enhanced_script_2(my_p: Processor):
     yield '!print Next morning:'
     yield from [
         '!print What a nice day!',
-        '!print I\'ll go to cooking something the living room',
+        '!print I\'ll go to cooking something the kitchen',
         f'!print First, I\'ll turn off my bed side lamp ({local_lamp_lookup_table[2]}).',
         f'<char0> [switchon] <light> ({local_light_lookup_table[4]})',
         f'<char0> [switchoff] <tablelamp> ({local_lamp_lookup_table[2]})',
