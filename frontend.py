@@ -269,7 +269,8 @@ class AppWindow:
         if not self.only_UI:
             geo = render_home(iot_states)
             self.my_load(geometry=geo)
-        self.update_all_iot_labels()
+        else:
+            self.update_all_iot_labels()
 
     def on_content_switch_before(self):
         print("on_content_switch before called")
@@ -280,7 +281,8 @@ class AppWindow:
             if not self.only_UI:
                 geo = render_home(iot_states)
                 self.my_load(geometry=geo)
-            self.update_all_iot_labels()
+            else:
+                self.update_all_iot_labels()
 
     def update_all_iot_labels(self):
         for i in range(len(self.all_iots_labels)):
