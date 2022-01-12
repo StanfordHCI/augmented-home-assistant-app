@@ -11,7 +11,9 @@ import sys
 
 MAX_NUM_BUTTONS = 20
 NUM_IOTS = 11
+
 SCRIPT_IDX = 0
+ONLY_UI = True
 
 
 class AppWindow:
@@ -25,7 +27,7 @@ class AppWindow:
                         [-1.9514, 1.2500, -10.4198],
                         [-2.4120, 1.2500, 1.0357],
                         [-1.5379, 1.2500, -14.3466],
-                        [3, 1.2500, 7],
+                        [4, 1.2500, 7],
                         [1.1244, 1.2500, 7]]
         self.only_UI = only_UI
         self.settings = Settings()
@@ -230,7 +232,9 @@ class AppWindow:
 
         ## Remove ceiling
         self._show_labels = gui.Checkbox("Show labels")
-        self._show_labels.checked = False  # remove the ceiling on default
+        self._show_labels.checked = True  # remove the ceiling on default
+        if not self.all_3d_labels:
+            self.add_iot_3d_labels()
         self._show_labels.set_on_checked(self._on_show_labels)
 
         ## Add the previous two items
@@ -419,6 +423,13 @@ class AppWindow:
             h_layout.visible = True
             on_trigger.visible = False
             off_trigger.visible = False
+
+            if latest_index_reverse != 20: # not the "When" button
+                # print("sdsdsd")
+                # print(latest_index_reverse)
+                self.curr_button = button
+                button.is_on = True
+                button.text = "Selecting an IoT..."
 
             # adjust the padding if it's door to avoid weird issue:
 
@@ -1035,7 +1046,7 @@ class AppWindow:
 
 
 def main():
-    only_UI = True
+    only_UI = ONLY_UI
     sensors = [0] * NUM_IOTS
     gui.Application.instance.initialize()
     if not only_UI:
