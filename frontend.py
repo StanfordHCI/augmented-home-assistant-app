@@ -26,7 +26,7 @@ class AppWindow:
                         [3.5415, 1.2500, -0.4654],
                         [-1.9514, 1.2500, -10.4198],
                         [-2.4120, 1.2500, 1.0357],
-                        [-1.5379, 1.2500, -14.3466],
+                        [-1.5379, 1.2500, -15.3466],
                         [4, 1.2500, 7],
                         [1.1244, 1.2500, 7]]
         self.only_UI = only_UI
@@ -138,16 +138,13 @@ class AppWindow:
         self.iots = gui.CollapsableVert("IoTs", 0.1 * em, gui.Margins(em, 0, 0, 0))
 
         # horizontal layout
-        if not self.only_UI:
-            h_iot = gui.Horiz(2 * em)
-        else:
-            h_iot = gui.Horiz(2 * em)
+        h_iot = gui.Horiz(0.1 * em)
         # Add Lights
         v = gui.Vert(0.5 * em)
         num_lights = 5
         v.add_child(gui.Label("Lights"))
         for i in range(num_lights):
-            v.add_child(self.add_iot("L" + str(i)))
+            v.add_child(self.add_iot("Light " + str(i)))
         h_iot.add_child(v)
 
         # Add Doors
@@ -155,7 +152,7 @@ class AppWindow:
         num_doors = 3
         v2.add_child(gui.Label("Doors"))
         for i in range(num_doors):
-            v2.add_child(self.add_iot("D" + str(i)))
+            v2.add_child(self.add_iot("Door " + str(i)))
         h_iot.add_child(v2)
 
         # Add Others
@@ -165,7 +162,7 @@ class AppWindow:
         # v3.add_child(gui.Label("Curtain"))
         v3.add_child(gui.Label("Lamps"))
         for i in range(num_lamps):
-            v3.add_child(self.add_iot("T" + str(i)))
+            v3.add_child(self.add_iot("Lamp " + str(i)))
         h_iot.add_child(v3)
 
         self.iots.add_child(h_iot)
