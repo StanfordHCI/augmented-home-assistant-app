@@ -563,7 +563,7 @@ class AppWindow:
             self.all_button_on_off_trigger_states[button_index] = is_on
             on_trigger = self.all_button_on_off_trigger[button_index][0]
             off_trigger = self.all_button_on_off_trigger[button_index][1]
-            iot_id = int(self.all_button_states[button_index][2])
+            iot_id = int(self.all_button_states[button_index].split()[1])
             cuur_text = self.all_button_labels[button_index].text
             curr_button = self.all_buttons[button_index]
             curr_button_is_action = cuur_text == "Do" or cuur_text == "Else"
@@ -631,7 +631,7 @@ class AppWindow:
 
             on_trigger = self.all_button_on_off_trigger[curr_button_idx][0]
             off_trigger = self.all_button_on_off_trigger[curr_button_idx][1]
-            iot_id = int(self.all_button_states[curr_button_idx][2])
+            iot_id = int(self.all_button_states[curr_button_idx].split()[1])
             cuur_text = self.all_button_labels[curr_button_idx].text
             curr_button_is_action = cuur_text == "Do" or cuur_text == "Else"
             on_trigger.visible = True

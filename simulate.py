@@ -50,6 +50,7 @@ local_lookup_table = local_light_lookup_table + local_door_lookup_table + local_
 local_name_table = local_light_name_table + local_door_name_table + local_light_name_table
 local_name_lookup_table = {i: j for i, j in zip(local_lookup_table, local_name_table)}
 
+
 def find_nodes(graph, **kwargs):
     if len(kwargs) == 0:
         return None
@@ -293,6 +294,51 @@ class Processor:
         return light_states + door_states + tablelamp_states, graph
 
 
+def enhanced_script_2_zhuoyue(my_p: Processor):
+    comm.setup_experiment_log()
+    manual = 0
+    yield '!print One day:'
+    time.sleep(1)
+    yield '!print It\'s late now. I need to go to sleep...'
+    yield '<char0> [switchoff] <light> (402)'
+    # time.sleep(1)
+    yield from [
+        f'!print I\'ll turn on my bed side lamp ({local_lamp_name_table[2]}).',
+        f'<char0> [switchon] <tablelamp> ({local_lamp_lookup_table[2]})',
+    ]
+    yield from [
+        '!print OK. I\'ll go to bed now.',
+        '<char0> [sit] <bed> (394)',
+        f'<char0> [switchoff] <tablelamp> ({local_lamp_lookup_table[2]})',
+    ]
+    time.sleep(1)
+    on_light_ids = [
+        local_light_lookup_table[light_idx]
+        for light_idx in range(5)
+        if my_p.local_states_table[light_idx] != 0
+    ]
+    if len(on_light_ids) != 0:
+        # If any lights is still on, the user opens the door and then turns off those lights.
+        yield from [
+            '!print OHHHH. I forgot to turn off other lights again!',
+            f'<char0> [switchon] <tablelamp> ({local_lamp_lookup_table[2]})',
+            '<char0> [switchon] <light> (402)',
+            '<char0> [open] <door> (47)'
+        ]
+        for light_id in on_light_ids:
+            manual += 1
+            yield f'!print I have to MANUALLY TURN OFF {local_name_lookup_table[light_id]}!'
+            yield f'<char0> [switchoff] <light> ({light_id})'
+        yield from [
+            '!print I can finally go to sleep now. I wish it\'s all automatic!',
+            '<char0> [switchoff] <light> (402)',
+            f'<char0> [walk] <bed> (394)',
+            '<char0> [sit] <bed> (394)',
+        ]
+    time.sleep(1)
+    yield '!print Sleeping...zzz...'
+
+
 def enhanced_script_2(my_p: Processor):
     comm.setup_experiment_log()
     manual = 0
@@ -389,7 +435,7 @@ def sim_in_unity(selected_task, input, get_all_history=False):
             graph = my_p.initialize_graph_task_2()
             _ = comm.expand_scene(graph)
             comm.add_character('Chars/Female1', initial_room="bedroom")
-            my_p.process_programm(enhanced_script_2(my_p), input)
+            my_p.process_programm(enhanced_script_2_zhuoyue(my_p), input)
     else:
         ##### Task 3
         if get_all_history:
