@@ -88,7 +88,7 @@ class Processor:
             return graph
 
     def initialize_graph_task_2(self):
-        self.local_states_table = [1] * 5 + [1, 1, 1] + [0] * 3
+        self.local_states_table = [1] * 5 + [0, 1, 1] + [0] * 3
         if not self.get_all_history:
             comm.reset()
             success, graph = comm.environment_graph()
@@ -388,7 +388,7 @@ def sim_in_unity(selected_task, input, get_all_history=False):
         else:
             graph = my_p.initialize_graph_task_2()
             _ = comm.expand_scene(graph)
-            comm.add_character('Chars/Female1', initial_room="livingroom")
+            comm.add_character('Chars/Female1', initial_room="bedroom")
             my_p.process_programm(enhanced_script_2(my_p), input)
     else:
         ##### Task 3
