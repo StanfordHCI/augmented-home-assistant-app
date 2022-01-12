@@ -1,62 +1,4 @@
-import time
-
-from unity_simulator.comm_unity import UnityCommunication
-
-comm = UnityCommunication()
-
-script_1 = [
-    '<char0> [sit] <chair> (392)',
-    '<char0> [open] <door> (47)',
-    '<char0> [switchon] <light> (58)',
-    '<char0> [switchoff] <light> (402)',
-    '<char0> [switchoff] <tablelamp> (377)',
-    '<char0> [open] <microwave> (172)'
-]  # Add here your script
-
-script_2 = [
-    '<char0> [switchon] <tablelamp> (377)',
-    '<char0> [open] <door> (47)',
-    '<char0> [switchoff] <light> (278)',
-    '<char0> [switchoff] <light> (239)',
-    '<char0> [switchoff] <light> (58)',
-    '<char0> [switchoff] <light> (344)',
-    '<char0> [switchoff] <light> (402)',
-    '<char0> [close] <door> (47)',
-    '<char0> [sit] <bed> (394)']  # Add here your script
-
-# script_3 = [
-#     '<char0> [switchon] <tablelamp> (377)',
-#     '<char0> [open] <door> (47)',
-#     '<char0> [switchon] <light> (58)',
-#     '<char0> [open] <fridge> (163)',
-#     '<char0> [close] <fridge> (163)',
-#     '<char0> [switchoff] <light> (58)',
-#     '<char0> [sit] <bed> (394)']  # Add here your script
-
-script_3 = [
-    '<char0> [switchon] <tablelamp> (377)',
-    '<char0> [open] <door> (47)',
-    '<char0> [switchon] <light> (58)',
-    '<char0> [open] <fridge> (163)']  # Add here your script
-
-# 5 lights, 3 doors, 3 lamps
-local_light_lookup_table = [58, 239, 278, 344, 402]
-local_light_name_table = [f"Light {i}" for i in range(len(local_light_lookup_table))]
-local_door_lookup_table = [47, 254, 305]
-local_door_name_table = [f"Door {i}" for i in range(len(local_door_lookup_table))]
-local_lamp_lookup_table = [256, 376, 377]
-local_lamp_name_table = [f"Lamp {i}" for i in range(len(local_lamp_lookup_table))]
-local_lookup_table = local_light_lookup_table + local_door_lookup_table + local_lamp_lookup_table
-local_name_table = local_light_name_table + local_door_name_table + local_light_name_table
-local_name_lookup_table = {i: j for i, j in zip(local_lookup_table, local_name_table)}
-
-
-def find_nodes(graph, **kwargs):
-    if len(kwargs) == 0:
-        return None
-    else:
-        k, v = next(iter(kwargs.items()))
-        return [n for n in graph['nodes'] if n[k] == v]
+from routines import *
 
 
 class Processor:
@@ -68,52 +10,75 @@ class Processor:
         self.local_states_table = [1] * 11
         self.excluded_list = [163, 172]  # 163 is fridge, 172 is microwave
 
-    def initialize_graph(self):
-        self.local_states_table = [0, 0, 0, 0, 1] + [0, 0, 1] + [0, 0, 1]
-        if not self.get_all_history:
-            comm.reset()
-            success, graph = comm.environment_graph()
-            tablelamp = find_nodes(graph, class_name='tablelamp')[0]
-            tablelamp['states'] = ['OFF']
-            tablelamp = find_nodes(graph, class_name='tablelamp')[1]
-            tablelamp['states'] = ['OFF']
-            lights = find_nodes(graph, class_name='lightswitch')
-            for l in lights:
-                l['states'] = ['OFF']
-            door = find_nodes(graph, class_name='door')[0]
-            door['states'] = ['CLOSED']
-            door2 = find_nodes(graph, class_name='door')[1]
-            door2['states'] = ['CLOSED']
-            l5 = find_nodes(graph, class_name='lightswitch')[4]
-            l5['states'] = ['ON']
-            return graph
+    def initialize_graph(self, idx):
+        graph = None
+        if idx == 0:
+            self.local_states_table = [1] * 5 + [0, 1, 1] + [0] * 3
+            if not self.get_all_history:
+                comm.reset()
+                success, graph = comm.environment_graph()
+                tablelamps = find_nodes(graph, class_name='tablelamp')
+                for tablelamp in tablelamps:
+                    tablelamp['states'] = ['OFF']
+                door = find_nodes(graph, class_name='door')[0]
+                door['states'] = ['CLOSED']
 
-    def initialize_graph_task_2(self):
-        self.local_states_table = [1] * 5 + [0, 1, 1] + [0] * 3
-        if not self.get_all_history:
-            comm.reset()
-            success, graph = comm.environment_graph()
-            tablelamps = find_nodes(graph, class_name='tablelamp')
-            for tablelamp in tablelamps:
+        elif idx == 1:
+            self.local_states_table = [0, 0, 0, 0, 1] + [0, 0, 1] + [0, 0, 1]
+            if not self.get_all_history:
+                comm.reset()
+                success, graph = comm.environment_graph()
+                tablelamp = find_nodes(graph, class_name='tablelamp')[0]
                 tablelamp['states'] = ['OFF']
-            door = find_nodes(graph, class_name='door')[0]
-            door['states'] = ['CLOSED']
-            return graph
-
-    def initialize_graph_task_3(self):
-        self.local_states_table = [0] * 5 + [0, 1, 1] + [0, 0, 0]
-        if not self.get_all_history:
-            comm.reset()
-            success, graph = comm.environment_graph()
-            lights = find_nodes(graph, class_name='lightswitch')
-            for l in lights:
-                l['states'] = ['OFF']
-            tablelamps = find_nodes(graph, class_name='tablelamp')
-            for tablelamp in tablelamps:
+                tablelamp = find_nodes(graph, class_name='tablelamp')[1]
                 tablelamp['states'] = ['OFF']
-            door = find_nodes(graph, class_name='door')[0]
-            door['states'] = ['CLOSED']
-            return graph
+                lights = find_nodes(graph, class_name='lightswitch')
+                for l in lights:
+                    l['states'] = ['OFF']
+                door = find_nodes(graph, class_name='door')[0]
+                door['states'] = ['CLOSED']
+                door2 = find_nodes(graph, class_name='door')[1]
+                door2['states'] = ['CLOSED']
+                l5 = find_nodes(graph, class_name='lightswitch')[4]
+                l5['states'] = ['ON']
+        elif idx == 2:
+            self.local_states_table = [0] * 5 + [0, 1, 1] + [0, 0, 0]
+            if not self.get_all_history:
+                comm.reset()
+                success, graph = comm.environment_graph()
+                lights = find_nodes(graph, class_name='lightswitch')
+                for l in lights:
+                    l['states'] = ['OFF']
+                tablelamps = find_nodes(graph, class_name='tablelamp')
+                for tablelamp in tablelamps:
+                    tablelamp['states'] = ['OFF']
+                door = find_nodes(graph, class_name='door')[0]
+                door['states'] = ['CLOSED']
+        elif idx == 3:
+            self.local_states_table = [0] * 5 + [1, 1, 1] + [0, 0, 0]
+            if not self.get_all_history:
+                comm.reset()
+                success, graph = comm.environment_graph()
+                lights = find_nodes(graph, class_name='lightswitch')
+                for l in lights:
+                    l['states'] = ['OFF']
+                tablelamps = find_nodes(graph, class_name='tablelamp')
+                for tablelamp in tablelamps:
+                    tablelamp['states'] = ['OFF']
+        elif idx == 4:
+            self.local_states_table = [0] * 5 + [1, 1, 1] + [0, 0, 0]
+            if not self.get_all_history:
+                comm.reset()
+                success, graph = comm.environment_graph()
+                lights = find_nodes(graph, class_name='lightswitch')
+                for l in lights:
+                    l['states'] = ['OFF']
+                tablelamps = find_nodes(graph, class_name='tablelamp')
+                for tablelamp in tablelamps:
+                    tablelamp['states'] = ['OFF']
+        else:
+            print("none")
+        return graph
 
     def translate_from_state_to_action(self, msg):
         if msg == "":
@@ -158,14 +123,7 @@ class Processor:
         print(if_action)
         print(else_action)
 
-        ## Task 1
-        # trigger = "[open] <door> (47)"
-        # conditions = []
-        # and_or = 0  # 0 is and, 1 is or
-        # if_action = ["0 4", "1 0", "0 10"]
-        # else_action = []
-
-        # ## Task 2
+        # ## Task 0
         # trigger = "[open] <door> (47)"
         # # trigger = '[switchon] <tablelamp> (377)'
         # conditions = ["1 9", "1 10"]
@@ -173,7 +131,15 @@ class Processor:
         # if_action = ["0 0", "0 1", "0 2", "0 3", "0 4"]
         # else_action = []
 
-        ## Task 3
+
+        ## Task 1
+        # trigger = "[open] <door> (47)"
+        # conditions = []
+        # and_or = 0  # 0 is and, 1 is or
+        # if_action = ["0 4", "1 0", "0 10"]
+        # else_action = []
+
+        ## Task 2
         # need to update task 1 to the following (adding the else)
         # trigger = "[open] <door> (47)"
         # conditions = ["1 4"]
@@ -251,6 +217,8 @@ class Processor:
         all_history = [self.local_states_table.copy()]
         all_history_changed_idx = ['initial']
         for action in script:
+            if action.startswith('!'):
+                continue
             obj_id = int(action[action.find("(") + 1:action.find(")")].lower())
             action_match = action[action.find("[") + 1:action.find("]")].lower()
             # if it's not "walk" and those non-iot actions
@@ -294,162 +262,38 @@ class Processor:
         return light_states + door_states + tablelamp_states, graph
 
 
-def enhanced_script_2_zhuoyue(my_p: Processor):
-    comm.setup_experiment_log()
-    manual = 0
-    yield '!print One day:'
-    time.sleep(1)
-    yield '!print It\'s late now. I need to go to sleep...'
-    yield '<char0> [switchoff] <light> (402)'
-    # time.sleep(1)
-    yield from [
-        f'!print I\'ll turn on my bed side lamp ({local_lamp_name_table[2]}).',
-        f'<char0> [switchon] <tablelamp> ({local_lamp_lookup_table[2]})',
-    ]
-    yield from [
-        '!print OK. I\'ll go to bed now.',
-        '<char0> [sit] <bed> (394)',
-        f'<char0> [switchoff] <tablelamp> ({local_lamp_lookup_table[2]})',
-    ]
-    time.sleep(1)
-    on_light_ids = [
-        local_light_lookup_table[light_idx]
-        for light_idx in range(5)
-        if my_p.local_states_table[light_idx] != 0
-    ]
-    if len(on_light_ids) != 0:
-        # If any lights is still on, the user opens the door and then turns off those lights.
-        yield from [
-            '!print OHHHH. I forgot to turn off other lights again!',
-            f'<char0> [switchon] <tablelamp> ({local_lamp_lookup_table[2]})',
-            '<char0> [switchon] <light> (402)',
-            '<char0> [open] <door> (47)'
-        ]
-        for light_id in on_light_ids:
-            manual += 1
-            yield f'!print I have to MANUALLY TURN OFF {local_name_lookup_table[light_id]}!'
-            yield f'<char0> [switchoff] <light> ({light_id})'
-        yield from [
-            '!print I can finally go to sleep now. I wish it\'s all automatic!',
-            '<char0> [switchoff] <light> (402)',
-            f'<char0> [walk] <bed> (394)',
-            '<char0> [sit] <bed> (394)',
-        ]
-    time.sleep(1)
-    yield '!print Sleeping...zzz...'
-
-
-def enhanced_script_2(my_p: Processor):
-    comm.setup_experiment_log()
-    manual = 0
-    yield '!print One day:'
-    time.sleep(1)
-    yield '!print It\'s late now. I need to go to sleep...'
-    # time.sleep(1)
-    yield from [
-        f'!print I\'ll turn on my bed side lamp ({local_lamp_name_table[2]}).',
-        f'<char0> [walk] <door> (47)',
-        f'<char0> [open] <door> (47)',
-        f'<char0> [switchon] <tablelamp> ({local_lamp_lookup_table[2]})',
-        f'<char0> [walk] <door> (47)',
-        f'<char0> [close] <door> (47)',
-        '<char0> [switchoff] <light> (402)',
-    ]
-    yield from [
-        '!print OK. I\'ll go to bed now.',
-        '<char0> [sit] <bed> (394)',
-    ]
-    time.sleep(1)
-    on_light_ids = [
-        local_light_lookup_table[light_idx]
-        for light_idx in range(5)
-        if my_p.local_states_table[light_idx] != 0
-    ]
-    if len(on_light_ids) != 0:
-        # If any lights is still on, the user opens the door and then turns off those lights.
-        yield from [
-            '!print OHHHH. I forgot to turn off other lights again!',
-            '<char0> [switchon] <light> (402)',
-            '<char0> [open] <door> (47)'
-        ]
-        for light_id in on_light_ids:
-            manual += 1
-            yield f'!print I have to MANUALLY TURN OFF {local_name_lookup_table[light_id]}!'
-            yield f'<char0> [switchoff] <light> ({light_id})'
-        yield from [
-            '!print I can finally go to sleep now. I wish it\'s all automatic!',
-            '<char0> [switchoff] <light> (402)',
-            f'<char0> [walk] <bed> (394)',
-            '<char0> [sit] <bed> (394)',
-        ]
-    time.sleep(1)
-    yield '!print Sleeping...zzz...'
-    time.sleep(1)
-    yield '!print Next morning:'
-    yield from [
-        '!print What a nice day!',
-        '!print I\'ll go to cooking something the kitchen',
-        f'!print First, I\'ll turn off my bed side lamp ({local_lamp_lookup_table[2]}).',
-        f'<char0> [switchon] <light> ({local_light_lookup_table[4]})',
-        f'<char0> [switchoff] <tablelamp> ({local_lamp_lookup_table[2]})',
-        '<char0> [open] <door> (47)',
-        f'<char0> [switchon] <light> ({local_light_lookup_table[0]})',
-        f'<char0> [switchoff] <light> ({local_light_lookup_table[4]})',
-        '<char0> [close] <door> (47)',
-    ]
-    if my_p.local_states_table[0] == 0:
-        manual += 1
-        yield from [
-            '!print WHAT!!! Why is my light off now???',
-            f'!print I have to MANUALLY TURN ON {local_light_lookup_table[0]}!',
-            f'<char0> [switchon] <light> ({local_light_lookup_table[0]})',
-        ]
-    yield from [
-        '<char0> [open] <microwave> (172)',
-        '!print end of story',
-        f'!print Summary: I have to do stuff manually {manual} time(s)'
-        if manual > 0 else
-        f'!print Summary: I don\'t have do things manually ;)'
-    ]
-
-
 def sim_in_unity(selected_task, input, get_all_history=False):
     my_p = Processor(get_all_history)
-    print(input)
     if selected_task == 0:
-        #### Task 1
-        if get_all_history:
-            my_p.initialize_graph()
-            return my_p.return_all_history(script_1)
-        else:
-            graph = my_p.initialize_graph()
-            _ = comm.expand_scene(graph)
-            comm.add_character('Chars/Female1', initial_room="bedroom")
-            my_p.process_programm(script_1, input)
+        script_my = enhanced_script_0_zhuoyue(my_p, get_all_history)
+        initial_room = "bedroom"
     elif selected_task == 1:
-        #### Task 2
-        if get_all_history:
-            my_p.initialize_graph_task_2()
-            return my_p.return_all_history(script_2)
-        else:
-            graph = my_p.initialize_graph_task_2()
-            _ = comm.expand_scene(graph)
-            comm.add_character('Chars/Female1', initial_room="bedroom")
-            my_p.process_programm(enhanced_script_2_zhuoyue(my_p), input)
+        script_my = script_1
+        initial_room = "bedroom"
+    elif selected_task == 2:
+        script_my = script_2
+        initial_room = "bedroom"
+        #### Training
+    elif selected_task == 3:
+        script_my = script_3
+        initial_room = "livingroom"
+    elif selected_task == 4:
+        script_my = script_4
+        initial_room = "kitchen"
+        #### Training
+
+    if get_all_history:
+        my_p.initialize_graph(selected_task)
+        return my_p.return_all_history(script_my)
     else:
-        ##### Task 3
-        if get_all_history:
-            my_p.initialize_graph_task_3()
-            return my_p.return_all_history(script_3)
-        else:
-            graph = my_p.initialize_graph_task_3()
-            _ = comm.expand_scene(graph)
-            comm.add_character('Chars/Female1', initial_room="bedroom")
-            my_p.process_programm(script_3, input)
+        graph = my_p.initialize_graph(selected_task)
+        _ = comm.expand_scene(graph)
+        comm.add_character('Chars/Female1', initial_room=initial_room)
+        my_p.process_programm(script_my, input)
 
 
 if __name__ == '__main__':
-    sim_in_unity(1, None)
+    sim_in_unity(4, None)
     # script_new = [
     #     '<char0> [open] <door> (47)']  # Add here your script
     # comm.render_script(script_new, find_solution=False)

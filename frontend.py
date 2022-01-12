@@ -6,10 +6,12 @@ import numpy as np
 import open3d as o3d
 import time
 import random
+import os
+import sys
 
 MAX_NUM_BUTTONS = 20
 NUM_IOTS = 11
-SCRIPT_IDX = 1
+SCRIPT_IDX = 4
 
 
 class AppWindow:
@@ -30,7 +32,7 @@ class AppWindow:
         self.width = width
         self.height = height
         self.settings.new_ibl_name = gui.Application.instance.resource_path + "/" + "default"
-        self.window = gui.Application.instance.create_window("Augmented Home Assistant", self.width, self.height)
+        self.window = gui.Application.instance.create_window("HomeView", self.width, self.height)
         if not self.only_UI:
             self._scene = gui.SceneWidget()
             self._scene.scene = rendering.Open3DScene(self.window.renderer)
@@ -178,7 +180,7 @@ class AppWindow:
 
         condition_button = gui.Button("Condition(s)")
         action_button = gui.Button("Action(s)")
-        clear_button = gui.Button("Clear")
+        clear_button = gui.Button("Reset")
         test_button = gui.Button("Test")
         test_button.toggleable = True
         test_button.visible = False
@@ -186,6 +188,7 @@ class AppWindow:
         condition_button.set_on_clicked(self.on_condition)
         action_button.set_on_clicked(self.on_action)
         test_button.set_on_clicked(self.on_test)
+        clear_button.set_on_clicked(self.on_clear)
         deploy_button.set_on_clicked(self.on_deploy)
         self.test_button = test_button
 
@@ -354,6 +357,12 @@ class AppWindow:
         self.add_a_button("Do", latest_index_reverse, toggle_visile=False)
         # else:  # latest_label == "Do":
         #     print("Not available!")
+
+    def on_clear(self):
+        print("clear button called")
+        # os.execv(sys.executable, ['python3'])
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
     def on_test(self):
         if self.test_button.is_on:
