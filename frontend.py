@@ -424,7 +424,7 @@ class AppWindow:
             on_trigger.visible = False
             off_trigger.visible = False
 
-            if latest_index_reverse != 20: # not the "When" button
+            if latest_index_reverse != 20:  # not the "When" button
                 # print("sdsdsd")
                 # print(latest_index_reverse)
                 self.curr_button = button
@@ -731,7 +731,7 @@ class AppWindow:
                     msg = "Turn on the light " + str(curr_iot_idx) if is_on else "Turn off the light " + str(
                         curr_iot_idx)
                 elif curr_button_is_when:
-                    msg = "Light " + str(curr_iot_idx) + " is turned on"if is_on else "Light " + str(
+                    msg = "Light " + str(curr_iot_idx) + " is turned on" if is_on else "Light " + str(
                         curr_iot_idx) + " is turned off"
                 else:
                     msg = "Light " + str(curr_iot_idx) + " is on" if is_on else "Light " + str(
@@ -754,8 +754,8 @@ class AppWindow:
                     msg = "Open the door " + str(curr_iot_idx - 5) if is_on else "Close the door " + str(
                         curr_iot_idx - 5)
                 elif curr_button_is_when:
-                    msg = "Door " + str(curr_iot_idx - 5) + " is opened"if is_on else "Door " + str(
-                        curr_iot_idx - 5)  + " is closed"
+                    msg = "Door " + str(curr_iot_idx - 5) + " is opened" if is_on else "Door " + str(
+                        curr_iot_idx - 5) + " is closed"
                 else:
 
                     msg = "Door " + str(curr_iot_idx - 5) + " is open" if is_on else "Door " + str(
@@ -778,7 +778,7 @@ class AppWindow:
                         curr_iot_idx - 8)
                 elif curr_button_is_when:
                     msg = "Lamp " + str(curr_iot_idx - 8) + " is turned on" if is_on else "Lamp " + str(
-                        curr_iot_idx - 8)  + " is turned off"
+                        curr_iot_idx - 8) + " is turned off"
                 else:
                     msg = "Lamp " + str(curr_iot_idx - 8) + " is on" if is_on else "Lamp " + str(
                         curr_iot_idx - 8) + " is off"

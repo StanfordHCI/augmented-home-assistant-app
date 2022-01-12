@@ -133,7 +133,6 @@ class Processor:
         # if_action = ["0 0", "0 1", "0 2", "0 3", "0 4"]
         # else_action = []
 
-
         ## Task 1
         # trigger = "[open] <door> (47)"
         # conditions = []
@@ -321,7 +320,6 @@ def sim_in_unity(selected_task, input, get_all_history=False):
             _ = comm.expand_scene(graph)
             comm.add_character('Chars/Female1', initial_room=initial_room)
             my_p.process_programm(script_my, input)
-
 
 
 if __name__ == '__main__':
