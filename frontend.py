@@ -9,7 +9,7 @@ import random
 
 MAX_NUM_BUTTONS = 20
 NUM_IOTS = 11
-SCRIPT_IDX = 0
+SCRIPT_IDX = 1
 
 
 class AppWindow:
@@ -54,24 +54,26 @@ class AppWindow:
         self.all_button_on_off_trigger = []
         self.all_button_on_off_trigger_states = [None] * MAX_NUM_BUTTONS  # True, False
         self.all_combo_items_id = None
-        self.all_combo_current_item_id = None
+        self.all_combo_current_item_id = 0
         self.all_histories, self.all_history_changed_idx = sim_in_unity(SCRIPT_IDX, [], get_all_history=True)
 
         if not self.only_UI:
             self.all_iots = sensors
         else:
             self.all_iots = []
+        self.all_iots_buttons = []
+        self.all_iots_labels = []
         self.curr_button = None
         self.test_button = None
         self.initialize_all_buttons()
 
         # Add all collapsable
+        self.add_history()
         if self.only_UI:
             self.add_iots()
-        else:
-            self.add_history()
         self.add_configs()
-        self.add_controls()
+        if not self.only_UI:
+            self.add_controls()
 
         # Apply layout
         self._on_apply_layout()
@@ -95,23 +97,34 @@ class AppWindow:
 
         # Content switcher
         before_trigger = gui.Button("Before Trigger")
-        before_trigger.horizontal_padding_em = 0.91
-        before_trigger.vertical_padding_em = 0.1
+        if not self.only_UI:
+            before_trigger.horizontal_padding_em = 0.91
+            before_trigger.vertical_padding_em = 0.1
+        else:
+            before_trigger.horizontal_padding_em = 2.9
+            before_trigger.vertical_padding_em = 0.2
         before_trigger.set_on_clicked(self.on_content_switch_before)
 
         after_trigger = gui.Button("After Trigger")
-        after_trigger.horizontal_padding_em = 0.91
-        after_trigger.vertical_padding_em = 0.1
+        if not self.only_UI:
+            after_trigger.horizontal_padding_em = 0.91
+            after_trigger.vertical_padding_em = 0.1
+        else:
+            after_trigger.horizontal_padding_em = 2.9
+            after_trigger.vertical_padding_em = 0.2
         after_trigger.set_on_clicked(self.on_content_switch_after)
 
         after_auto = gui.Button("After Automation")
-        after_auto.vertical_padding_em = 0.25
+        if not self.only_UI:
+            after_auto.vertical_padding_em = 0.25
         after_auto.set_on_clicked(self.on_content_switch_auto)
 
         h = gui.Horiz(0.1 * em)  # row 1
         h.add_child(before_trigger)
+        # if not self.only_UI:
         h.add_stretch()
         h.add_child(after_trigger)
+
 
         self.history.add_child(self.combo)
         self.history.add_fixed(self.separation_height_small)
@@ -122,13 +135,13 @@ class AppWindow:
 
     def add_iots(self):
         em = self.window.theme.font_size
-        self.iots = gui.CollapsableVert("IoTs", 0.25 * em, gui.Margins(em, 0, 0, 0))
+        self.iots = gui.CollapsableVert("IoTs", 0.1 * em, gui.Margins(em, 0, 0, 0))
 
         # horizontal layout
         if not self.only_UI:
             h_iot = gui.Horiz(2 * em)
         else:
-            h_iot = gui.Horiz(6 * em)
+            h_iot = gui.Horiz(2 * em)
         # Add Lights
         v = gui.Vert(0.5 * em)
         num_lights = 5
@@ -252,16 +265,36 @@ class AppWindow:
         # if self.all_combo_current_item_id + 1 < len(self.all_histories):
         iot_states = self.all_histories[self.all_combo_current_item_id]
         print(iot_states)
-        geo = render_home(iot_states)
-        self.my_load(geometry=geo)
+        self.all_iots = iot_states
+        if not self.only_UI:
+            geo = render_home(iot_states)
+            self.my_load(geometry=geo)
+        self.update_all_iot_labels()
 
     def on_content_switch_before(self):
         print("on_content_switch before called")
         if self.all_combo_current_item_id - 1 >= 0:
             iot_states = self.all_histories[self.all_combo_current_item_id - 1]
             print(iot_states)
-            geo = render_home(iot_states)
-            self.my_load(geometry=geo)
+            self.all_iots = iot_states
+            if not self.only_UI:
+                geo = render_home(iot_states)
+                self.my_load(geometry=geo)
+            self.update_all_iot_labels()
+
+    def update_all_iot_labels(self):
+        for i in range(len(self.all_iots_labels)):
+            is_on = self.all_iots[i]
+            if i <= 4:  # lights
+                msg = "is on" if is_on else "is off"
+            elif i <= 7:  # doors
+                msg = "is open" if is_on else "is closed"
+
+            else:
+                msg = "is on" if is_on else "is off"
+            self.all_iots_labels[i].text = msg
+        self.window.add_child(self.panel)  # this will update the layout
+
 
     def on_content_switch_auto(self):
         print("on_content_switch called")
@@ -274,9 +307,13 @@ class AppWindow:
         # use the correct_trigger to force it to render no matter what...
         new_states = self.controller.check_udpate(correct_trigger, self.all_iots)
         if new_states:
-            geo = render_home(new_states)
-            self.my_load(geometry=geo)
             self.all_iots = new_states
+            if not self.only_UI:
+                geo = render_home(new_states)
+                self.my_load(geometry=geo)
+            else:
+                self.update_all_iot_labels()
+
 
     def on_combo(self, new_val, new_idx):
         print("combo called")
@@ -390,7 +427,7 @@ class AppWindow:
             h_layout = gui.Horiz(0, gui.Margins(0 * em, 0.6 * em, 0.5 * em,
                                                 0.5 * em))
             select_label = gui.Label("")
-            # ZHUOYUe add toggle
+            # add toggle
             and_or_toggle = gui.ToggleSwitch("and/or")
             button_index = len(self.all_buttons)
             my_new_function = self.create_on_and_or_function(button_index)
@@ -437,22 +474,49 @@ class AppWindow:
             self.program_layout.add_fixed(self.separation_height_small)
             self.program_layout.add_child(h)
 
+    # def add_iot(self, name):
+    #     switch = gui.Button(name)
+    #     # switch.enabled = False
+    #     switch.toggleable = True
+    #     switch.is_on = True
+    #     switch_index = len(self.all_iots)
+    #     # my_new_function = self.create_on_switch_function(name, switch_index)
+    #     # switch.set_on_clicked(my_new_function)
+    #     self.all_iots.append(switch)
+    #     return switch
+    #
     def add_iot(self, name):
-        switch = gui.ToggleSwitch(name)
-        switch_index = len(self.all_iots)
-        my_new_function = self.create_on_switch_function(name, switch_index)
-        switch.set_on_clicked(my_new_function)
-        self.all_iots.append(switch)
-        return switch
 
-    def get_iot_states(self):
-        iot_states = []
-        if not self.only_UI:
-            iot_states = self.all_iots
-        else:
-            for iot in self.all_iots:
-                iot_states.append(int(iot.is_on))
-        return iot_states
+        em = self.window.theme.font_size
+        button = gui.Button(name)
+        label = gui.Label("is off")
+        # switch.enabled = False
+        switch_index = len(self.all_iots)
+        my_new_function = self.create_on_switch_function(switch_index)
+
+        # my_new_function = self.on_switch_3d_know_states(switch_index)
+        # on_switch_3d_know_states
+        button.set_on_clicked(my_new_function)
+
+        h = gui.Horiz(0.1 * em)  # row 1
+        h.add_child(button)
+        h.add_stretch()
+        h.add_child(label)
+        button.vertical_padding_em = 0
+        button.horizontal_padding_em = 1
+        self.all_iots.append(0)
+        self.all_iots_buttons.append(button)
+        self.all_iots_labels.append(label)
+        return h
+
+    # def get_iot_states(self):
+    #     iot_states = []
+    #     if not self.only_UI:
+    #         iot_states = self.all_iots
+    #     else:
+    #         for iot in self.all_iots:
+    #             iot_states.append(int(iot.is_on))
+    #     return iot_states
 
     def create_on_select_function(*args, **kwargs):
         """
@@ -467,6 +531,8 @@ class AppWindow:
 
         def function_template(*args, **kwargs):
             self.curr_button = button
+            curr_button_idx = self.all_buttons.index(button)
+            self.all_button_on_off_trigger_states[curr_button_idx] = None
             button.text = "Selecting an IoT..."
 
         return function_template
@@ -522,6 +588,7 @@ class AppWindow:
 
             on_trigger.visible = False
             off_trigger.visible = False
+            self.window.add_child(self.panel)  # this will update the layout
 
             if button_index == 0:  ### the "When" switch
                 self.combo.clear_items()
@@ -535,6 +602,7 @@ class AppWindow:
                     self.all_combo_current_item_id = self.all_combo_items_id[
                         0]  # selecting the first one by default
 
+
             # switch_is_on = self.all_button_and_or[button_index].is_on
             # if switch_is_on:
             #     self.all_button_labels[button_index].text = "Or"
@@ -547,40 +615,17 @@ class AppWindow:
         """
         """
         self = args[0]
-        switch_name = args[1]
-        switch_index = args[2]
+        iot_idx = args[1]
 
         def function_template(*args, **kwargs):
-            # get the states of all toggles
-            # the order is, 5 lights, 3 doors, 3 tablelamp
-            iot_states = self.get_iot_states()
-            print(iot_states)
-            geo = render_home(iot_states)
-            self.my_load(geometry=geo)
-            if self.curr_button:
-                curr_button_idx = self.all_buttons.index(self.curr_button)
-                self.curr_button.text, self.all_button_states[curr_button_idx] = self.get_on_off_state_message(
-                    self.all_iots[switch_index].is_on, curr_button_idx, switch_index)
-                self.curr_button.is_on = False  # to change the color of the button
-                self.curr_button = None
-            if self.test_button.is_on:  # we are in the testing mode
-                # time.sleep(2) # sleep doesn't really work...it's still gonna wait until the function is done...
-                trigger = str(iot_states[switch_index]) + " " + str(switch_index)
-                new_states = self.controller.check_udpate(trigger, iot_states)
-                if new_states:
-                    geo = render_home(new_states)
-                    self.my_load(geometry=geo)
-                    for j in range(len(iot_states)):
-                        # update the toggle
-                        self.all_iots[j].is_on = bool(new_states[j])
-
+            self.on_switch_3d_know_states(iot_idx)
         return function_template
 
-    def on_switch_3d_know_states(self, switch_index):
+    def on_switch_3d_know_states(self, iot_idx):
         if self.curr_button:
             curr_button_idx = self.all_buttons.index(self.curr_button)
             self.curr_button.text, self.all_button_states[curr_button_idx] = self.get_on_off_state_message_new(
-                curr_button_idx, switch_index, is_3d_switch=True)
+                curr_button_idx, iot_idx, is_3d_switch=True)
             self.curr_button.is_on = False  # to change the color of the button
             self.curr_button = None
 
@@ -950,7 +995,7 @@ class AppWindow:
 
 
 def main():
-    only_UI = False
+    only_UI = True
     sensors = [0] * NUM_IOTS
     gui.Application.instance.initialize()
     if not only_UI:

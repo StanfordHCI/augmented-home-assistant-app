@@ -403,7 +403,7 @@ def sim_in_unity(selected_task, input, get_all_history=False):
 
 
 if __name__ == '__main__':
-    sim_in_unity(0, None)
+    sim_in_unity(1, None)
     # script_new = [
     #     '<char0> [open] <door> (47)']  # Add here your script
     # comm.render_script(script_new, find_solution=False)
