@@ -11,7 +11,7 @@ import sys
 
 MAX_NUM_BUTTONS = 20
 NUM_IOTS = 11
-SCRIPT_IDX = 4
+SCRIPT_IDX = 0
 
 
 class AppWindow:
@@ -89,12 +89,9 @@ class AppWindow:
         self.combo = gui.Combobox()
         fake_time = 10
         for i in range(len(self.all_histories)):
-            self.combo.add_item("01/01/2022 20:{} AM".format(fake_time + i * 2))
+            self.combo.add_item("01/01/2022 21:{} AM".format(fake_time + i * 2))
             # self.all_combo_items.append(self.all_histories[i])
             # fake_time += random.randint(1, 3)
-        # History combobox
-        # combo.add_item("01/01/2022 8:12 AM")
-        # combo.add_item("01/01/2022 8:15 AM")
         self.combo.set_on_selection_changed(self.on_combo)
 
         # Content switcher
@@ -126,7 +123,6 @@ class AppWindow:
         # if not self.only_UI:
         h.add_stretch()
         h.add_child(after_trigger)
-
 
         self.history.add_child(self.combo)
         self.history.add_fixed(self.separation_height_small)
@@ -192,7 +188,7 @@ class AppWindow:
         deploy_button.set_on_clicked(self.on_deploy)
         self.test_button = test_button
 
-        self.config.add_fixed(self.separation_height_big)
+        # self.config.add_fixed(self.separation_height_big)
         if not self.only_UI:
             self.config.add_child(gui.Label("----------------------------------------------------"))
         else:
@@ -300,7 +296,6 @@ class AppWindow:
             self.all_iots_labels[i].text = msg
         self.window.add_child(self.panel)  # this will update the layout
 
-
     def on_content_switch_auto(self):
         print("on_content_switch called")
         # self.test_button.is_on = True
@@ -319,11 +314,10 @@ class AppWindow:
             else:
                 self.update_all_iot_labels()
 
-
     def on_combo(self, new_val, new_idx):
         print("combo called")
         self.all_combo_current_item_id = self.all_combo_items_id[new_idx]
-        print(new_idx, new_val)
+        self.on_content_switch_before()
 
     def on_condition(self):
         reversed_all_buttons = self.all_buttons[::-1]
@@ -500,7 +494,7 @@ class AppWindow:
 
         em = self.window.theme.font_size
         button = gui.Button(name)
-        label = gui.Label("is off")
+        label = gui.Label("-------")
         # switch.enabled = False
         switch_index = len(self.all_iots)
         my_new_function = self.create_on_switch_function(switch_index)
@@ -578,6 +572,7 @@ class AppWindow:
             cuur_text = self.all_button_labels[button_index].text
             curr_button = self.all_buttons[button_index]
             curr_button_is_action = cuur_text == "Do" or cuur_text == "Else"
+            curr_button_is_when = cuur_text == "When"
             # if light, self.all_button_states[button_index] is in the form of "state id"
             if iot_id <= 4:
                 on_trigger.text = "On"
@@ -586,6 +581,9 @@ class AppWindow:
                 if curr_button_is_action:
                     on_trigger.text = "Open"
                     off_trigger.text = "Close"
+                elif curr_button_is_when:
+                    on_trigger.text = "Opened"
+                    off_trigger.text = "Closed"
                 else:
                     on_trigger.text = "Open"
                     off_trigger.text = "Closed"
@@ -605,14 +603,15 @@ class AppWindow:
                 self.combo.clear_items()
                 self.all_combo_items_id = []
                 fake_time = 10
-                for i in range(1, len(self.all_history_changed_idx)):  # the first item is "initial" not useful
+                for i in range(0, len(self.all_history_changed_idx)):  # the "initial" not useful
+                    if self.all_history_changed_idx[i] == 'initial':
+                        continue
                     if self.all_history_changed_idx[i] == self.all_button_states[button_index]:
-                        self.combo.add_item("01/01/2022 20:{} AM".format(fake_time + i * 2))
+                        self.combo.add_item("01/01/2022 21:{} AM".format(fake_time + i * 2))
                         self.all_combo_items_id.append(i)
                 if len(self.all_combo_items_id) >= 1:
                     self.all_combo_current_item_id = self.all_combo_items_id[
                         0]  # selecting the first one by default
-
 
             # switch_is_on = self.all_button_and_or[button_index].is_on
             # if switch_is_on:
@@ -630,6 +629,7 @@ class AppWindow:
 
         def function_template(*args, **kwargs):
             self.on_switch_3d_know_states(iot_idx)
+
         return function_template
 
     def on_switch_3d_know_states(self, iot_idx):
@@ -645,6 +645,7 @@ class AppWindow:
             iot_id = int(self.all_button_states[curr_button_idx].split()[1])
             cuur_text = self.all_button_labels[curr_button_idx].text
             curr_button_is_action = cuur_text == "Do" or cuur_text == "Else"
+            curr_button_is_when = cuur_text == "When"
             on_trigger.visible = True
             off_trigger.visible = True
             # if light, self.all_button_states[button_index] is in the form of "state id"
@@ -657,6 +658,11 @@ class AppWindow:
                     off_trigger.text = "Close"
                     on_trigger.horizontal_padding_em = 2.5
                     off_trigger.horizontal_padding_em = 2.5
+                elif curr_button_is_when:
+                    on_trigger.text = "Opened"
+                    off_trigger.text = "Closed"
+                    on_trigger.horizontal_padding_em = 2.3
+                    off_trigger.horizontal_padding_em = 2.3
                 else:
                     on_trigger.text = "Open"
                     off_trigger.text = "Closed"
@@ -683,8 +689,10 @@ class AppWindow:
                 self.all_combo_items_id = []
                 fake_time = 10
                 for i in range(1, len(self.all_history_changed_idx)):  # the first item is "initial" not useful
+                    if self.all_history_changed_idx[i] == 'initial':
+                        continue
                     if self.all_history_changed_idx[i] == self.all_button_states[curr_button_idx]:
-                        self.combo.add_item("01/01/2022 20:{} AM".format(fake_time + i * 2))
+                        self.combo.add_item("01/01/2022 21:{} AM".format(fake_time + i * 2))
                         self.all_combo_items_id.append(i)
                 self.all_combo_current_item_id = self.all_combo_items_id[0]  # selecting the first one by default
         if self.test_button.is_on:  # we are in the testing mode
@@ -701,56 +709,77 @@ class AppWindow:
         # in the order of 5 lights, 3 doors, 3 lamps
         cuur_text = self.all_button_labels[curr_button_idx].text
         curr_button_is_action = cuur_text == "Do" or cuur_text == "Else"
+        curr_button_is_when = cuur_text == "When"
 
         is_on = self.all_button_on_off_trigger_states[curr_button_idx]
         state_info = None
         if curr_iot_idx <= 4:  # lights
             if is_on is not None:
                 state_info = str(int(is_on)) + " " + str(curr_iot_idx)
-                if not curr_button_is_action:
-                    msg = "Light " + str(curr_iot_idx) + " is on" if is_on else "Light " + str(
-                        curr_iot_idx) + " is off"
-                else:
+                if curr_button_is_action:
                     msg = "Turn on the light " + str(curr_iot_idx) if is_on else "Turn off the light " + str(
                         curr_iot_idx)
+                elif curr_button_is_when:
+                    msg = "Light " + str(curr_iot_idx) + " is turned on"if is_on else "Light " + str(
+                        curr_iot_idx) + " is turned off"
+                else:
+                    msg = "Light " + str(curr_iot_idx) + " is on" if is_on else "Light " + str(
+                        curr_iot_idx) + " is off"
+
             else:
                 state_info = "x " + str(curr_iot_idx)
-                if not curr_button_is_action:
-                    msg = "Light " + str(curr_iot_idx) + " is ..."
-                else:
+                if curr_button_is_action:
                     msg = "Turn ... the light " + str(curr_iot_idx)
+                elif curr_button_is_when:
+                    msg = "Light " + str(curr_iot_idx) + " is turned..."
+                else:
+                    msg = "Light " + str(curr_iot_idx) + " is ..."
+
 
         elif curr_iot_idx <= 7:  # doors
             if is_on is not None:
                 state_info = str(int(is_on)) + " " + str(curr_iot_idx)
-                if not curr_button_is_action:  # TODO: change this 5 to len(lights)
-                    msg = "Door " + str(curr_iot_idx - 5) + " is open" if is_on else "Door " + str(
-                        curr_iot_idx - 5) + " is closed"
-                else:
+                if curr_button_is_action:  # TODO: change this 5 to len(lights)
                     msg = "Open the door " + str(curr_iot_idx - 5) if is_on else "Close the door " + str(
                         curr_iot_idx - 5)
+                elif curr_button_is_when:
+                    msg = "Door " + str(curr_iot_idx - 5) + " is opened"if is_on else "Door " + str(
+                        curr_iot_idx - 5)  + " is closed"
+                else:
+
+                    msg = "Door " + str(curr_iot_idx - 5) + " is open" if is_on else "Door " + str(
+                        curr_iot_idx - 5) + " is closed"
             else:
                 state_info = "x " + str(curr_iot_idx)
-                if not curr_button_is_action:  # TODO: change this 5 to len(lights)
-                    msg = "Door " + str(curr_iot_idx - 5) + " is ..."
-                else:
+                if curr_button_is_action:  # TODO: change this 5 to len(lights)
                     msg = "... the door " + str(curr_iot_idx - 5)
+                elif curr_button_is_when:
+                    msg = "Door " + str(curr_iot_idx - 5) + " is..."
+                else:
+
+                    msg = "Door " + str(curr_iot_idx - 5) + " is ..."
         else:
             if is_on is not None:
                 state_info = str(int(is_on)) + " " + str(
                     curr_iot_idx)  # TODO: change this 8 to len(lights) + len(doors)
-                if not curr_button_is_action:
-                    msg = "Lamp " + str(curr_iot_idx - 8) + " is on" if is_on else "Lamp " + str(
-                        curr_iot_idx - 8) + " is off"
-                else:
+                if curr_button_is_action:
                     msg = "Turn on the lamp " + str(curr_iot_idx - 8) if is_on else "Turn off the lamp " + str(
                         curr_iot_idx - 8)
+                elif curr_button_is_when:
+                    msg = "Lamp " + str(curr_iot_idx - 8) + " is turned on" if is_on else "Lamp " + str(
+                        curr_iot_idx - 8)  + " is turned off"
+                else:
+                    msg = "Lamp " + str(curr_iot_idx - 8) + " is on" if is_on else "Lamp " + str(
+                        curr_iot_idx - 8) + " is off"
             else:
                 state_info = "x " + str(curr_iot_idx)
-                if not curr_button_is_action:
-                    msg = "Lamp " + str(curr_iot_idx - 8) + " is ..."
-                else:
+                if curr_button_is_action:
                     msg = "Turn ... the lamp " + str(curr_iot_idx - 8)
+                elif curr_button_is_when:
+                    msg = "Lamp " + str(curr_iot_idx - 8) + " is turned..."
+                else:
+                    msg = "Lamp " + str(curr_iot_idx - 8) + " is ..."
+
         return msg, state_info
 
     def get_on_off_state_message(self, is_on, curr_button_idx, curr_iot_idx, is_3d_switch=False):
@@ -1014,7 +1043,7 @@ def main():
         height = 768
     else:
         width = 400
-        height = 550
+        height = 950
 
     w = AppWindow(width, height, only_UI=only_UI, sensors=sensors)
     if not only_UI:

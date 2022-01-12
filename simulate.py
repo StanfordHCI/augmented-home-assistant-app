@@ -42,7 +42,7 @@ class Processor:
                 l5 = find_nodes(graph, class_name='lightswitch')[4]
                 l5['states'] = ['ON']
         elif idx == 2:
-            self.local_states_table = [0] * 5 + [0, 1, 1] + [0, 0, 0]
+            self.local_states_table = [0] * 5 + [0, 0, 1] + [0, 0, 0]
             if not self.get_all_history:
                 comm.reset()
                 success, graph = comm.environment_graph()
@@ -54,6 +54,8 @@ class Processor:
                     tablelamp['states'] = ['OFF']
                 door = find_nodes(graph, class_name='door')[0]
                 door['states'] = ['CLOSED']
+                door2 = find_nodes(graph, class_name='door')[1]
+                door2['states'] = ['CLOSED']
         elif idx == 3:
             self.local_states_table = [0] * 5 + [1, 1, 1] + [0, 0, 0]
             if not self.get_all_history:
@@ -214,10 +216,14 @@ class Processor:
         _ = comm.expand_scene(graph)
 
     def return_all_history(self, script):
-        all_history = [self.local_states_table.copy()]
-        all_history_changed_idx = ['initial']
+        all_history = []
+        all_history_changed_idx = []
         for action in script:
             if action.startswith('!'):
+                continue
+            if action == 'initial':
+                all_history.append(self.local_states_table.copy())
+                all_history_changed_idx.append('initial')
                 continue
             obj_id = int(action[action.find("(") + 1:action.find(")")].lower())
             action_match = action[action.find("[") + 1:action.find("]")].lower()
@@ -264,36 +270,62 @@ class Processor:
 
 def sim_in_unity(selected_task, input, get_all_history=False):
     my_p = Processor(get_all_history)
-    if selected_task == 0:
-        script_my = enhanced_script_0_zhuoyue(my_p, get_all_history)
-        initial_room = "bedroom"
-    elif selected_task == 1:
-        script_my = script_1
-        initial_room = "bedroom"
-    elif selected_task == 2:
-        script_my = script_2
-        initial_room = "bedroom"
-        #### Training
-    elif selected_task == 3:
-        script_my = script_3
-        initial_room = "livingroom"
-    elif selected_task == 4:
-        script_my = script_4
-        initial_room = "kitchen"
-        #### Training
+    # if selected_task == 0:
+    #     script_my = enhanced_script_0(my_p, get_all_history)
+    #     initial_room = "bedroom"
+    # elif selected_task == 1:
+    #     script_my = script_1
+    #     initial_room = "bedroom"
+    # elif selected_task == 2:
+    #     script_my = script_2
+    #     initial_room = "bedroom"
+    #     #### Training
+    # elif selected_task == 3:
+    #     script_my = script_3
+    #     initial_room = "livingroom"
+    # elif selected_task == 4:
+    #     script_my = script_4
+    #     initial_room = "kitchen"
+    #     #### Training
 
-    if get_all_history:
-        my_p.initialize_graph(selected_task)
-        return my_p.return_all_history(script_my)
-    else:
-        graph = my_p.initialize_graph(selected_task)
-        _ = comm.expand_scene(graph)
-        comm.add_character('Chars/Female1', initial_room=initial_room)
-        my_p.process_programm(script_my, input)
+    if selected_task == 0:
+        script_my = enhanced_script_0(my_p, get_all_history)
+        initial_room = "bedroom"
+        if get_all_history:
+            my_p.initialize_graph(0)
+            return my_p.return_all_history(script_my)
+        else:
+            graph = my_p.initialize_graph(0)
+            _ = comm.expand_scene(graph)
+            comm.add_character('Chars/Female1', initial_room=initial_room)
+            my_p.process_programm(script_my, input)
+    elif selected_task == 1:
+        script_my = enhanced_script_1_2(my_p, get_all_history)
+        initial_room = "bedroom"
+        if get_all_history:
+            my_p.initialize_graph(1)
+            return my_p.return_all_history(script_my)
+        else:
+            graph = my_p.initialize_graph(1)
+            _ = comm.expand_scene(graph)
+            comm.add_character('Chars/Female1', initial_room=initial_room)
+            my_p.process_programm(script_my, input)
+    elif selected_task == 2:
+        script_my = enhanced_script_3_4(my_p, get_all_history)
+        initial_room = "livingroom"
+        if get_all_history:
+            my_p.initialize_graph(3)
+            return my_p.return_all_history(script_my)
+        else:
+            graph = my_p.initialize_graph(3)
+            _ = comm.expand_scene(graph)
+            comm.add_character('Chars/Female1', initial_room=initial_room)
+            my_p.process_programm(script_my, input)
+
 
 
 if __name__ == '__main__':
-    sim_in_unity(4, None)
+    sim_in_unity(2, None)
     # script_new = [
     #     '<char0> [open] <door> (47)']  # Add here your script
     # comm.render_script(script_new, find_solution=False)
